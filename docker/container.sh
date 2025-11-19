@@ -61,24 +61,24 @@ setup_x11() {
         echo "[WARN] Install with: sudo apt install xauth"
         return 1
     fi
-    
+
     # Check if DISPLAY is set
     if [ -z "$DISPLAY" ]; then
         echo "[WARN] DISPLAY variable is not set. X11 forwarding will not work."
         return 1
     fi
-    
+
     # Create temporary directory for xauth
     export __ROBOTISLAB_TMP_DIR=$(mktemp -d)
     export __ROBOTISLAB_TMP_XAUTH="${__ROBOTISLAB_TMP_DIR}/.xauth"
-    
+
     # Create xauth file
     touch "${__ROBOTISLAB_TMP_XAUTH}"
     xauth nlist "$DISPLAY" | sed -e 's/^..../ffff/' | xauth -f "${__ROBOTISLAB_TMP_XAUTH}" nmerge -
     
     echo "[INFO] X11 forwarding configured"
     echo "[INFO] XAUTH file: ${__ROBOTISLAB_TMP_XAUTH}"
-    
+
     return 0
 }
 
@@ -102,8 +102,24 @@ build_image() {
 # Start docker container
 start_container() {
     echo "[INFO] Starting Robotis Lab docker container..."
+
+    # Check and initialize git submodules
+    echo "[INFO] Checking git submodules..."
+    cd "${ROBOTISLAB_PATH}"
+    if [ -d ".git" ]; then
+        if git submodule status | grep -q '^-'; then
+            echo "[INFO] Initializing git submodules..."
+            git submodule update --init --recursive
+            echo "[INFO] Git submodules initialized"
+        else
+            echo "[INFO] Git submodules already initialized"
+        fi
+    else
+        echo "[WARN] Not a git repository, skipping submodule initialization"
+    fi
+
     cd "${DOCKER_DIR}"
-    
+
     # Setup X11 forwarding
     X11_COMPOSE_FILE=""
     if check_x11; then
@@ -114,13 +130,13 @@ start_container() {
     else
         echo "[INFO] X11 forwarding not available (no DISPLAY or xauth)"
     fi
-    
+
     # Check if container is already running
     if [ -n "$(docker ps -q --filter "name=^robotis_lab${DOCKER_NAME_SUFFIX}$")" ]; then
         echo "[INFO] Container is already running"
         return 0
     fi
-    
+
     # Check if container exists but is stopped
     if [ -n "$(docker ps -aq --filter "name=^robotis_lab${DOCKER_NAME_SUFFIX}$")" ]; then
         echo "[INFO] Starting existing container..."
@@ -129,7 +145,7 @@ start_container() {
         echo "[INFO] Creating and starting new container..."
         docker compose -f docker-compose.yaml ${X11_COMPOSE_FILE} up -d robotis_lab
     fi
-    
+
     echo "[INFO] Container started successfully!"
     echo "[INFO] Use './docker/container.sh enter' to access the container"
 }
@@ -137,13 +153,13 @@ start_container() {
 # Enter running container
 enter_container() {
     echo "[INFO] Entering Robotis Lab docker container..."
-    
+
     # Check if container is running
     if [ -z "$(docker ps -q --filter "name=^robotis_lab${DOCKER_NAME_SUFFIX}$")" ]; then
         echo "[ERROR] Container is not running. Start it first with './docker/container.sh start'"
         exit 1
     fi
-    
+
     # Pass DISPLAY environment variable to the container
     docker exec -it -e DISPLAY="${DISPLAY}" robotis_lab${DOCKER_NAME_SUFFIX} /bin/bash
 }
@@ -160,7 +176,7 @@ stop_container() {
 clean_docker() {
     echo "[INFO] Cleaning up Robotis Lab docker resources..."
     cd "${DOCKER_DIR}"
-    
+
     read -p "This will remove the container and image. Continue? (y/N) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -185,7 +201,7 @@ show_logs() {
 
 # check argument provided
 if [ -z "$*" ]; then
-    echo "[Error] No arguments provided." >&2
+    echo "[ERROR] No arguments provided." >&2
     print_help
     exit 1
 fi
@@ -218,7 +234,7 @@ case "$1" in
         exit 0
         ;;
     *)
-        echo "[Error] Invalid command: $1"
+        echo "[ERROR] Invalid command: $1"
         print_help
         exit 1
         ;;
