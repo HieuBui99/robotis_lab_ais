@@ -51,8 +51,8 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = MISSING
     # end-effector sensor: will be populated by agent env cfg
     # ee_frame: FrameTransformerCfg = MISSING
-    bottle: AssetBaseCfg = MISSING
-    # basket: AssetBaseCfg = MISSING
+    brush: AssetBaseCfg = MISSING
+    basket: AssetBaseCfg = MISSING
     table: AssetBaseCfg = MISSING
 
     cam_wrist_right: CameraCfg = MISSING
@@ -143,19 +143,19 @@ class ObservationsCfg:
     class SubtaskCfg(ObsGroup):
         """Observations for subtask group."""
 
-        # grasp_bottle = ObsTerm(
+        # grasp_brush = ObsTerm(
         #     func=mdp.object_grasped,
         #     params={
         #         "robot_cfg": SceneEntityCfg("robot"),
         #         "ee_frame_cfg": SceneEntityCfg("ee_frame"),
-        #         "object_cfg": SceneEntityCfg("bottle"),
+        #         "object_cfg": SceneEntityCfg("brush"),
         #     },
         # )
 
-        # bottle_in_basket = ObsTerm(
-        #     func=mdp.bottle_in_basket,
+        # brush_in_basket = ObsTerm(
+        #     func=mdp.brush_in_basket,
         #     params={
-        #         "bottle_cfg": SceneEntityCfg("bottle"),
+        #         "brush_cfg": SceneEntityCfg("brush"),
         #         "basket_cfg": SceneEntityCfg("basket"),
         #     },
         # )
@@ -176,11 +176,11 @@ class TerminationsCfg:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
     # success = DoneTerm(
-    #     func=mdp.task_done, params={"bottle_cfg": SceneEntityCfg("bottle"), "basket_cfg": SceneEntityCfg("basket"), "distance_threshold": 0.1}
+    #     func=mdp.task_done, params={"brush_cfg": SceneEntityCfg("brush"), "basket_cfg": SceneEntityCfg("basket"), "distance_threshold": 0.1}
     # )
 
-    bottle_dropping = DoneTerm(
-        func=mdp.root_height_below_minimum, params={"minimum_height": -0.05, "asset_cfg": SceneEntityCfg("bottle")}
+    brush_dropping = DoneTerm(
+        func=mdp.root_height_below_minimum, params={"minimum_height": -0.05, "asset_cfg": SceneEntityCfg("brush")}
     )
 
 

@@ -18,6 +18,7 @@ import os
 import threading
 import torch
 import cv2
+import time
 from pynput.keyboard import Listener
 from collections.abc import Callable
 from datetime import datetime
@@ -26,6 +27,7 @@ from robotis_dds_python.idl.trajectory_msgs.msg import JointTrajectory_
 from robotis_dds_python.idl.sensor_msgs.msg import JointState_
 from robotis_dds_python.idl.sensor_msgs.msg import CompressedImage_
 from robotis_dds_python.idl.std_msgs.msg import Header_
+from robotis_dds_python.idl.std_msgs.msg import String_
 from robotis_dds_python.idl.builtin_interfaces.msg import Time_
 
 from robotis_dds_python.tools.topic_manager import TopicManager
@@ -44,6 +46,8 @@ class FFWSG2Sdk:
         self._started = False
         self._reset_state = False
         self._additional_callbacks = {}
+        self._first_episode = True  # Track if this is the first episode
+        self._episode_phase = "idle"  # Current state: "idle" (waiting) or "recording" (active episode)
         self.lock = threading.Lock()  # Protect shared state
         
         # Initialize current joint state - will be updated only when commands are received
@@ -61,12 +65,20 @@ class FFWSG2Sdk:
 
         # Subscribers for both arms
         self.left_arm_joint_trajectory_reader = topic_manager.topic_reader(
-            topic_name="/leader/joint_trajectory_command_broadcaster_left/joint_trajectory",
+            topic_name="/leader/joint_trajectory_command_broadcaster_left/joint_trajectory_",
             topic_type=JointTrajectory_
         )
         self.right_arm_joint_trajectory_reader = topic_manager.topic_reader(
             topic_name="/leader/joint_trajectory_command_broadcaster_right/joint_trajectory",
             topic_type=JointTrajectory_
+        )
+        self.lift_joint_trajectory_reader = topic_manager.topic_reader(
+            topic_name="/leader/joystick_controller_right/joint_trajectory",
+            topic_type=JointTrajectory_
+        )
+        self.joystick_track_trigger_reader = topic_manager.topic_reader(
+            topic_name="/leader/joystick_controller/tact_trigger",
+            topic_type=String_
         )
 
         # Publishers
@@ -90,8 +102,13 @@ class FFWSG2Sdk:
         # Start subscriber threads for both arms
         self.left_thread = threading.Thread(target=self._left_arm_subscriber_loop, daemon=True)
         self.right_thread = threading.Thread(target=self._right_arm_subscriber_loop, daemon=True)
+        self.lift_thread = threading.Thread(target=self._lift_joint_subscriber_loop, daemon=True)
+        self.joystick_thread = threading.Thread(target=self._joystick_subscriber_loop, daemon=True)
+
         self.left_thread.start()
         self.right_thread.start()
+        self.lift_thread.start()
+        self.joystick_thread.start()
 
         # Keyboard listener
         self.listener = Listener(on_press=self._on_press)
@@ -119,14 +136,24 @@ class FFWSG2Sdk:
                 if key.char == 'b':
                     self._started = True
                     self._reset_state = False
+                    # Update episode tracking when manually starting
+                    if self._first_episode:
+                        self._first_episode = False
+                    self._episode_phase = "recording"  # Now recording
                 elif key.char == 'r':
                     self._started = False
                     self._reset_state = True
                     self._call_callback("R")
+                    # If resetting while recording before first episode was saved, go back to first episode state
+                    if self._episode_phase == "recording" and not self._first_episode:
+                        self._first_episode = True
+                        self._episode_phase = "idle"
                 elif key.char == 'n':
                     self._started = False
                     self._reset_state = True
                     self._call_callback("N")
+                    # After saving, go back to idle state
+                    self._episode_phase = "idle"
             elif self.mode == 'inference':
                 if key.char == 'b':
                     self._started = True
@@ -154,6 +181,7 @@ class FFWSG2Sdk:
                         joint_dict = dict(zip(msg.joint_names, msg.points[-1].positions))
                         with self.lock:
                             self.left_arm_trajectory_cmd = joint_dict
+                time.sleep(0.001)  # 1ms sleep to reduce CPU load
         except Exception as e:
             print("Left arm subscriber thread exception:", e)
         finally:
@@ -172,6 +200,7 @@ class FFWSG2Sdk:
                         joint_dict = dict(zip(msg.joint_names, msg.points[-1].positions))
                         with self.lock:
                             self.right_arm_trajectory_cmd = joint_dict
+                time.sleep(0.001)  # 1ms sleep to reduce CPU load
         except Exception as e:
             print("Right arm subscriber thread exception:", e)
         finally:
@@ -180,6 +209,77 @@ class FFWSG2Sdk:
             except:
                 pass
             print("Right arm subscriber closed")
+
+    def _lift_joint_subscriber_loop(self):
+        """Continuously read lift joint trajectory commands from the leader."""
+        try:
+            while self.running:
+                for msg in self.lift_joint_trajectory_reader.take_iter():
+                    if msg and msg.points:
+                        joint_dict = dict(zip(msg.joint_names, msg.points[-1].positions))
+                        with self.lock:
+                            # Update only the lift joint command
+                            self.left_arm_trajectory_cmd = self.left_arm_trajectory_cmd or {}
+                            self.left_arm_trajectory_cmd.update(joint_dict)
+                time.sleep(0.001)  # 1ms sleep to reduce CPU load
+        except Exception as e:
+            print("Lift joint subscriber thread exception:", e)
+        finally:
+            try:
+                self.lift_joint_trajectory_reader.Close()
+            except:
+                pass
+            print("Lift joint subscriber closed")
+
+    def _joystick_subscriber_loop(self):
+        """Continuously read joystick track trigger commands from the leader."""
+        try:
+            while self.running:
+                for msg in self.joystick_track_trigger_reader.take_iter():
+                    # Only process joystick triggers in record mode
+                    if self.mode != 'record':
+                        continue
+
+                    tack_trigger = msg.data
+                    if tack_trigger == 'right':
+                        with self.lock:
+                            if self._first_episode:
+                                # First episode: only start recording
+                                self._started = True
+                                self._reset_state = False
+                                self._first_episode = False
+                                self._episode_phase = "recording"  # Now recording
+                            elif self._episode_phase == "recording":
+                                # Currently recording: save episode and go back to idle
+                                self._started = False
+                                self._reset_state = True
+                                self._call_callback("N")
+                                self._episode_phase = "idle"  # Now idle, waiting for next start
+                            elif self._episode_phase == "idle":
+                                # Currently idle: start new episode
+                                self._started = True
+                                self._reset_state = False
+                                self._episode_phase = "recording"  # Now recording
+                    elif tack_trigger == 'left':
+                        with self.lock:
+                            # Reset current episode (don't save)
+                            self._started = False
+                            self._reset_state = True
+                            self._call_callback("R")
+                            # If resetting while recording before first episode was saved, go back to first episode state
+                            if self._episode_phase == "recording" and not self._first_episode:
+                                # We started recording but haven't saved yet - reset to first episode
+                                self._first_episode = True
+                                self._episode_phase = "idle"
+                time.sleep(0.001)  # 1ms sleep to reduce CPU load
+        except Exception as e:
+            print("Joystick subscriber thread exception:", e)
+        finally:
+            try:
+                self.joystick_track_trigger_reader.Close()
+            except:
+                pass
+            print("Joystick subscriber closed")
 
     # ----------------------
     # Publishers

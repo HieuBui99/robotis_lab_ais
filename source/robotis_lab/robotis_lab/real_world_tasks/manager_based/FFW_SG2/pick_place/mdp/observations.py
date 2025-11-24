@@ -157,29 +157,29 @@ def joint_pos_target_name(env: ManagerBasedEnv, joint_names: list[str], asset_na
     return joint_pos_target
 
 
-def bottle_in_basket(
+def brush_in_basket(
     env: ManagerBasedRLEnv,
-    bottle_cfg: SceneEntityCfg,
+    brush_cfg: SceneEntityCfg,
     basket_cfg: SceneEntityCfg,
     distance_threshold: float = 0.1,
 ) -> torch.Tensor:
-    """Check if the bottle is placed inside the basket."""
-    bottle: RigidObject = env.scene[bottle_cfg.name]
+    """Check if the brush is placed inside the basket."""
+    brush: RigidObject = env.scene[brush_cfg.name]
     basket: RigidObject = env.scene[basket_cfg.name]
 
-    bottle_pos = bottle.data.root_pos_w
+    brush_pos = brush.data.root_pos_w
     basket_pos = basket.data.root_pos_w
 
-    # Check if bottle is close to basket horizontally (x, y)
-    horizontal_distance = torch.linalg.vector_norm(bottle_pos[:, :2] - basket_pos[:, :2], dim=1)
+    # Check if brush is close to basket horizontally (x, y)
+    horizontal_distance = torch.linalg.vector_norm(brush_pos[:, :2] - basket_pos[:, :2], dim=1)
     horizontal_ok = horizontal_distance < distance_threshold
 
-    # Check if bottle is above the basket bottom but below basket rim
+    # Check if brush is above the basket bottom but below basket rim
     # Assuming basket bottom is at basket_pos z and rim is ~0.1m higher
     basket_bottom = basket_pos[:, 2]
     basket_rim = basket_pos[:, 2] + 0.1  # Adjust based on actual basket height
 
-    vertical_ok = (bottle_pos[:, 2] > basket_bottom) & (bottle_pos[:, 2] < basket_rim)
+    vertical_ok = (brush_pos[:, 2] > basket_bottom) & (brush_pos[:, 2] < basket_rim)
 
     in_basket = horizontal_ok & vertical_ok
 

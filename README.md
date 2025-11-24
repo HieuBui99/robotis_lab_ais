@@ -289,6 +289,13 @@ python scripts/sim2real/imitation_learning/inference/inference_demos.py --task R
 
 ```
 
+**FFW SG2 Pick and Place Task**
+
+```bash
+# Teleop and record demos
+python scripts/sim2real/imitation_learning/recorder/record_demos.py --task=RobotisLab-Real-Pick-Place-FFW-SG2-v0 --robot_type FFW_SG2 --dataset_file ./datasets/aiworker_pick_place_task.hdf5 --num_demos 10 --enable_cameras
+
+```
 
 </details>
 

@@ -22,11 +22,11 @@
 from isaaclab.envs.mimic_env_cfg import MimicEnvCfg, SubTaskConfig
 from isaaclab.utils import configclass
 
-from .joint_pos_env_cfg import OMYBottlePickPlaceEnvCfg
+from .joint_pos_env_cfg import OMYBrushPickPlaceEnvCfg
 
 
 @configclass
-class OMYPickPlaceMimicEnvCfg(OMYBottlePickPlaceEnvCfg, MimicEnvCfg):
+class OMYPickPlaceMimicEnvCfg(OMYBrushPickPlaceEnvCfg, MimicEnvCfg):
     """
     Configuration for the pick_place task with mimic environment.
     """
@@ -34,7 +34,7 @@ class OMYPickPlaceMimicEnvCfg(OMYBottlePickPlaceEnvCfg, MimicEnvCfg):
     def __post_init__(self):
         super().__post_init__()
 
-        self.datagen_config.name = "pick_and_place_the_bottle_in_the_basket"
+        self.datagen_config.name = "pick_and_place_the_brush_in_the_basket"
         self.datagen_config.generation_guarantee = True
         self.datagen_config.generation_keep_failed = True
         self.datagen_config.generation_num_trials = 10
@@ -47,16 +47,16 @@ class OMYPickPlaceMimicEnvCfg(OMYBottlePickPlaceEnvCfg, MimicEnvCfg):
 
         subtask_configs = []
         """
-        subtask: pick_bottle -> place_bottle_in_basket
+        subtask: pick_brush -> place_brush_in_basket
         """
-        # First subtask: Grasp the bottle
+        # First subtask: Grasp the brush
         subtask_configs.append(
             SubTaskConfig(
                 # Each subtask involves manipulation with respect to a single object frame.
-                object_ref="bottle",
+                object_ref="brush",
                 # This key corresponds to the binary indicator in "datagen_info" that signals
                 # when this subtask is finished (e.g., on a 0 to 1 edge).
-                subtask_term_signal="grasp_bottle",
+                subtask_term_signal="grasp_brush",
                 # Specifies time offsets for data generation when splitting a trajectory into
                 # subtask segments. Random offsets are added to the termination boundary.
                 subtask_term_offset_range=(10, 20),
@@ -72,15 +72,15 @@ class OMYPickPlaceMimicEnvCfg(OMYBottlePickPlaceEnvCfg, MimicEnvCfg):
                 num_fixed_steps=0,
                 # If True, apply action noise during the interpolation phase and execution
                 apply_noise_during_interpolation=False,
-                description="Grasp bottle",
-                next_subtask_description="Place bottle in basket",
+                description="Grasp brush",
+                next_subtask_description="Place brush in basket",
             )
         )
-        # Second subtask: Place bottle in basket
+        # Second subtask: Place brush in basket
         subtask_configs.append(
             SubTaskConfig(
                 object_ref="basket",
-                subtask_term_signal="bottle_in_basket",
+                subtask_term_signal="brush_in_basket",
                 subtask_term_offset_range=(5, 15),
                 selection_strategy="nearest_neighbor_object",
                 selection_strategy_kwargs={"nn_k": 3},
@@ -88,7 +88,7 @@ class OMYPickPlaceMimicEnvCfg(OMYBottlePickPlaceEnvCfg, MimicEnvCfg):
                 num_interpolation_steps=10,
                 num_fixed_steps=0,
                 apply_noise_during_interpolation=False,
-                description="Place bottle in basket",
+                description="Place brush in basket",
                 next_subtask_description="Task complete",
             )
         )

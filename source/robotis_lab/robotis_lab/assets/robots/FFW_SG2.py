@@ -24,7 +24,7 @@ FFW_SG2_CFG = ArticulationCfg(
     spawn=UsdFileCfg(
         usd_path=f"{ROBOTIS_LAB_ASSETS_DATA_DIR}/robots/FFW/FFW_SG2.usd",
         rigid_props=RigidBodyPropertiesCfg(
-            disable_gravity=False,
+            disable_gravity=True,
             max_depenetration_velocity=5.0,
         ),
         articulation_props=ArticulationRootPropertiesCfg(
@@ -75,10 +75,10 @@ FFW_SG2_CFG = ArticulationCfg(
         # Actuator for vertical lift joint
         "lift": ImplicitActuatorCfg(
             joint_names_expr=["lift_joint"],
-            velocity_limit_sim=1.0,
+            velocity_limit_sim=5.0,
             effort_limit_sim=10000000.0,
-            stiffness=1000000.0,
-            damping=100000.0,
+            stiffness=10000.0,
+            damping=2000.0,
         ),
 
         # Actuators for both arms

@@ -11,7 +11,6 @@ AIWORKER_TABLE_CFG = RigidObjectCfg(
             linear_damping=5.0,
             angular_damping=5.0,
         ),
-        activate_contact_sensors=False,
     ),
     init_state=RigidObjectCfg.InitialStateCfg(
         pos=[0.0, 0.0, 0.0],

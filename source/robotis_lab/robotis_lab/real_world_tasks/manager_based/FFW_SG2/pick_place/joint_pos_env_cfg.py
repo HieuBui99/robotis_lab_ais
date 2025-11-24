@@ -35,8 +35,8 @@ from robotis_lab.real_world_tasks.manager_based.FFW_SG2.pick_place.pick_place_en
 ##
 from isaaclab.markers.config import FRAME_MARKER_CFG  # isort: skip
 from robotis_lab.assets.robots.FFW_SG2 import FFW_SG2_CFG  # isort: skip
-from robotis_lab.assets.object.robotis_aiworker_table import AIWORKER_TABLE_CFG
-from robotis_lab.assets.object.plastic_bottle import PLASTIC_BOTTLE_CFG
+from robotis_lab.assets.object.robotis_net_table import NET_TABLE_CFG
+from robotis_lab.assets.object.brush_ring import BRUSH_RING_CFG
 from robotis_lab.assets.object.plastic_basket import PLASTIC_BASKET_CFG
 
 import math
@@ -51,16 +51,11 @@ class EventCfg:
         mode="reset",
         params={
             "joint_positions": {
-                "arm_l_joint1": 0.943,
-                "arm_l_joint2": 0.216,
-                "arm_l_joint4": -1.85,
-                "arm_l_joint6": -0.524,
-                "arm_r_joint1": 0.943,
-                "arm_r_joint2": -0.216,
-                "arm_r_joint4": -1.85,
-                "arm_r_joint6": -0.524,
-                "head_joint1": 0.69216,
-                "lift_joint": -0.22673,
+                "arm_l_joint1": 0.75,
+                "arm_l_joint4": -2.30,
+                "arm_r_joint1": 0.75,
+                "arm_r_joint4": -2.30,
+                "head_joint1": 0.299,
             },
             "asset_cfg": SceneEntityCfg("robot"),
         },
@@ -71,7 +66,7 @@ class EventCfg:
         mode="reset",
         params={
             "mean": 0.0,
-            "std": 0.01,
+            "std": 0.03,
             "joint_names": ["arm_l_joint1", "arm_l_joint2", "arm_l_joint3", "arm_l_joint4", "arm_l_joint5", "arm_l_joint6", "arm_l_joint7",
                             "arm_r_joint1", "arm_r_joint2", "arm_r_joint3", "arm_r_joint4", "arm_r_joint5", "arm_r_joint6", "arm_r_joint7"],
             "asset_cfg": SceneEntityCfg("robot"),
@@ -83,7 +78,7 @@ class EventCfg:
         mode="reset",
         params={
             "pose_range": {
-                "x": (0.03, 0.05),
+                "x": (-0.01, 0.01),
                 "y": (-0.01, 0.01),
                 "z": (0.0, 0.0),
                 "roll": (0.0, 0.0),
@@ -94,54 +89,32 @@ class EventCfg:
         },
     )
 
-    randomize_bottle_positions = EventTerm(
+    randomize_brush_positions = EventTerm(
         func=ffw_sg2_pick_place_events.randomize_object_pose,
         mode="reset",
         params={
-            "pose_range": {"x": (0.45, 0.6), "y": (-0.3, 0.0), "z": (0.85, 0.85), "roll": (math.pi/2, math.pi/2)},
+            "pose_range": {"x": (0.57, 0.59), "y": (0.0, 0.0), "z": (1.3, 1.3)},
             "min_separation": 0.1,
-            "asset_cfgs": [SceneEntityCfg("bottle")],
+            "asset_cfgs": [SceneEntityCfg("brush")],
         },
     )
 
-    set_basket1_position = EventTerm(
-        func=ffw_sg2_pick_place_events.set_object_pose,
+    randomize_basket_positions = EventTerm(
+        func=ffw_sg2_pick_place_events.randomize_object_pose,
         mode="reset",
         params={
-            "pose": {"x": 0.48, "y": -0.53, "z": 0.74, "roll": -math.pi/2, "pitch": math.pi, "yaw": 0.0},
-            "asset_cfg": SceneEntityCfg("basket1"),
-        },
-    )
-    set_basket2_position = EventTerm(
-        func=ffw_sg2_pick_place_events.set_object_pose,
-        mode="reset",
-        params={
-            "pose": {"x": 0.78, "y": -0.53, "z": 0.74, "roll": -math.pi/2, "pitch": math.pi, "yaw": 0.0},
-            "asset_cfg": SceneEntityCfg("basket2"),
-        },
-    )
-    set_basket3_position = EventTerm(
-        func=ffw_sg2_pick_place_events.set_object_pose,
-        mode="reset",
-        params={
-            "pose": {"x": 0.48, "y": 0.53, "z": 0.74, "roll": -math.pi/2, "pitch": math.pi, "yaw": 0.0},
-            "asset_cfg": SceneEntityCfg("basket3"),
-        },
-    )
-    set_basket4_position = EventTerm(
-        func=ffw_sg2_pick_place_events.set_object_pose,
-        mode="reset",
-        params={
-            "pose": {"x": 0.78, "y": 0.53, "z": 0.74, "roll": -math.pi/2, "pitch": math.pi, "yaw": 0.0},
-            "asset_cfg": SceneEntityCfg("basket4"),
+            "pose_range": {"x": (0.32, 0.34), "y": (0.0, 0.02), "z": (0.74, 0.74),
+                "roll": (math.pi/2, math.pi/2), "pitch": (0.0, 0.0), "yaw": (math.pi/2 - 0.03, math.pi/2 + 0.03)},
+            "min_separation": 0.1,
+            "asset_cfgs": [SceneEntityCfg("basket")],
         },
     )
 
-    set_table_position = EventTerm(
+    set_net_table_position = EventTerm(
         func=ffw_sg2_pick_place_events.set_object_pose,
         mode="reset",
         params={
-            "pose": {"x": 0.63, "y": 0.0, "z": 0.0, "roll": math.pi/2, "pitch": 0.0, "yaw": math.pi/2},
+            "pose": {"x": 0.2, "y": 0.0, "z": 0.0},
             "asset_cfg": SceneEntityCfg("table"),
         },
     )
@@ -158,7 +131,7 @@ class EventCfg:
 
 
 @configclass
-class FFWSG2BottlePickPlaceEnvCfg(PickPlaceEnvCfg):
+class FFWSG2PickPlaceEnvCfg(PickPlaceEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
@@ -171,14 +144,9 @@ class FFWSG2BottlePickPlaceEnvCfg(PickPlaceEnvCfg):
         self.scene.robot.spawn.semantic_tags = [("class", "robot")]
 
         # Set table
-        self.scene.table = AIWORKER_TABLE_CFG.replace(prim_path="{ENV_REGEX_NS}/Table")
-
-        self.scene.bottle = PLASTIC_BOTTLE_CFG.replace(prim_path="{ENV_REGEX_NS}/Bottle")
-
-        self.scene.basket1 = PLASTIC_BASKET_CFG.replace(prim_path="{ENV_REGEX_NS}/Basket1")
-        self.scene.basket2 = PLASTIC_BASKET_CFG.replace(prim_path="{ENV_REGEX_NS}/Basket2")
-        self.scene.basket3 = PLASTIC_BASKET_CFG.replace(prim_path="{ENV_REGEX_NS}/Basket3")
-        self.scene.basket4 = PLASTIC_BASKET_CFG.replace(prim_path="{ENV_REGEX_NS}/Basket4")
+        self.scene.table = NET_TABLE_CFG.replace(prim_path="{ENV_REGEX_NS}/Table")
+        self.scene.brush = BRUSH_RING_CFG.replace(prim_path="{ENV_REGEX_NS}/Brush")
+        self.scene.basket = PLASTIC_BASKET_CFG.replace(prim_path="{ENV_REGEX_NS}/Basket")
 
         # Add semantics to ground
         self.scene.plane.semantic_tags = [("class", "ground")]
