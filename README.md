@@ -246,13 +246,13 @@ https://github.com/user-attachments/assets/a6e75e80-203f-47d1-974b-d4c5435c15bc
 https://github.com/user-attachments/assets/8ec9d245-f8e0-4bcc-b683-0ea2864de495
 
 
-Teleop and record demos
+* Teleop and record demos
 ```bash
 python scripts/sim2real/imitation_learning/recorder/record_demos.py --task=RobotisLab-Real-Pick-Place-Bottle-OMY-v0 --robot_type OMY --dataset_file ./datasets/omy_pick_place_task.hdf5 --num_demos 10 --enable_cameras
 
 ```
 
-Mimic generate dataset
+* Mimic generate dataset
 
 ```bash
 # Data convert ee_pose action from joint action
@@ -269,7 +269,7 @@ python scripts/sim2real/imitation_learning/mimic/action_data_converter.py --robo
 
 ```
 
-Data convert lerobot dataset from IsaacLab hdf dataset
+* Data convert lerobot dataset from IsaacLab hdf dataset
 ```bash
 lerobot-python scripts/sim2real/imitation_learning/data_converter/isaaclab2lerobot.py \
     --task=RobotisLab-Real-Pick-Place-Bottle-OMY-v0 \
@@ -278,7 +278,7 @@ lerobot-python scripts/sim2real/imitation_learning/data_converter/isaaclab2lerob
 
 ```
 
-Inference in simulation
+* Inference in simulation
 ```bash
 python scripts/sim2real/imitation_learning/inference/inference_demos.py --task RobotisLab-Real-Pick-Place-Bottle-OMY-v0 --robot_type OMY --enable_cameras
 
@@ -286,13 +286,13 @@ python scripts/sim2real/imitation_learning/inference/inference_demos.py --task R
 
 **FFW SG2 Pick and Place Task**
 
-Teleop and record demos
+* Teleop and record demos
 ```bash
 python scripts/sim2real/imitation_learning/recorder/record_demos.py --task=RobotisLab-Real-Pick-Place-FFW-SG2-v0 --robot_type FFW_SG2 --dataset_file ./datasets/aiworker_pick_place.hdf5 --num_demos 10 --enable_cameras
 
 ```
 
-Mimic generate dataset
+* Mimic generate dataset
 ```bash
 
 # Data convert ee_pose action from joint action
@@ -309,7 +309,7 @@ python scripts/sim2real/imitation_learning/mimic/action_data_converter.py --robo
 
 ```
 
-Data convert lerobot dataset from IsaacLab hdf dataset
+* Data convert lerobot dataset from IsaacLab hdf dataset
 ```bash
 lerobot-python scripts/sim2real/imitation_learning/data_converter/isaaclab2lerobot.py \
     --task=RobotisLab-Real-Pick-Place-FFW-SG2-v0 \
@@ -317,8 +317,6 @@ lerobot-python scripts/sim2real/imitation_learning/data_converter/isaaclab2lerob
     --dataset_file ./datasets/joint_generated_aiworker_pick_place.hdf5
 
 ```
-
-```bash
 
 ## License
 
