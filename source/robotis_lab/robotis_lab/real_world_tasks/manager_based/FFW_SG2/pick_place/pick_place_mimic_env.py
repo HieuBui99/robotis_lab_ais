@@ -24,24 +24,10 @@ class FFWSG2PickPlaceMimicEnv(ManagerBasedRLMimicEnv):
         if env_ids is None:
             env_ids = slice(None)
 
-        # For FFW SG2, if eef_name is the robot name (e.g., "FFW_SG2"),
-        # return the right EEF pose as the primary manipulator
-        # Otherwise, try to get the specific EEF state from observation buffer
-        
-        # Map robot name to primary EEF (right arm for FFW SG2)
-        if eef_name in ["left_ee_frame_state", "right_ee_frame_state"]:
-            eef_state_key = eef_name
-        else:
-            # Try using eef_name directly
-            eef_state_key = eef_name
-        
-        if eef_state_key not in self.obs_buf["policy"]:
-            raise ValueError(
-                f"EEF state key '{eef_state_key}' (from eef_name '{eef_name}') "
-                f"not found in observation buffer. Available keys: {list(self.obs_buf['policy'].keys())}"
-            )
-        
-        eef_state = self.obs_buf["policy"][eef_state_key][env_ids]
+        # For FFW-SG2, Mimic framework uses a single robot name as key (e.g., "FFW-SG2")
+        # We return the right arm EEF pose as the primary manipulator for Mimic tracking
+        # But the full dual-arm actions will be generated in target_eef_pose_to_action
+        eef_state = self.obs_buf["policy"]["right_ee_frame_state"][env_ids]
         eef_pos = eef_state[:, :3]
         eef_quat = eef_state[:, 3:7]
         # quat: (w, x, y, z)
@@ -56,84 +42,71 @@ class FFWSG2PickPlaceMimicEnv(ManagerBasedRLMimicEnv):
         action_noise_dict: dict | None = None,
         env_id: int = 0,
     ) -> torch.Tensor:
-        # FFW SG2 dual-arm support: extract left and right EEF poses
-        # Expected keys: "left_ee_frame_state" and "right_ee_frame_state"
-        left_eef_pose = target_eef_pose_dict.get("left_ee_frame_state")
-        right_eef_pose = target_eef_pose_dict.get("right_ee_frame_state")
-        
-        if left_eef_pose is None or right_eef_pose is None:
-            raise ValueError(
-                f"Expected 'left_ee_frame_state' and 'right_ee_frame_state' in target_eef_pose_dict, "
-                f"got keys: {list(target_eef_pose_dict.keys())}"
-            )
-        
-        # Convert left EEF pose to pos + quat
-        left_eef_pos, left_eef_rot = PoseUtils.unmake_pose(left_eef_pose)
-        left_eef_quat = PoseUtils.quat_from_matrix(left_eef_rot)
-        left_pose_action = torch.cat([left_eef_pos, left_eef_quat], dim=0)
+        # Mimic framework provides single EEF pose (right arm as primary)
+        eef_name = list(self.cfg.subtask_configs.keys())[0]
+        target_right_eef_pose = target_eef_pose_dict[eef_name]
+        right_gripper_action = gripper_action_dict[eef_name]
         
         # Convert right EEF pose to pos + quat
-        right_eef_pos, right_eef_rot = PoseUtils.unmake_pose(right_eef_pose)
+        right_eef_pos, right_eef_rot = PoseUtils.unmake_pose(target_right_eef_pose)
         right_eef_quat = PoseUtils.quat_from_matrix(right_eef_rot)
+        
         right_pose_action = torch.cat([right_eef_pos, right_eef_quat], dim=0)
         
-        # Extract gripper actions for both arms
-        left_gripper = gripper_action_dict.get("left_ee_frame_state")
-        right_gripper = gripper_action_dict.get("right_ee_frame_state")
+        # For left arm, keep current observation state (not controlled by Mimic trajectory)
+        # Get current left arm EEF state from observation
+        left_eef_state = self.obs_buf["policy"]["left_ee_frame_state"]
         
-        if left_gripper is None or right_gripper is None:
-            raise ValueError(
-                f"Expected 'left_ee_frame_state' and 'right_ee_frame_state' gripper actions, "
-                f"got keys: {list(gripper_action_dict.keys())}"
-            )
-
-        # Get current lift and head positions from observation
-        # These are not controlled by IK, so we keep their current values
-        joint_pos = self.obs_buf["policy"]["joint_pos"][env_id]
-        lift_action = joint_pos[16:17]    # Index 16: lift_joint
-        head_action = joint_pos[17:19]    # Index 17-18: head_joint[1-2]
-
-        # Concatenate: [left_eef(7), right_eef(7), gripper_l(1), gripper_r(1), lift(1), head(2)] = 20D
+        if left_eef_state.dim() > 1:
+            left_eef_state = left_eef_state[env_id]
+        left_pose_action = left_eef_state[:7]  # pos(3) + quat(4)
+        
+        # For gripper_l, keep current state
+        joint_pos = self.obs_buf["policy"]["joint_pos"]
+        
+        if joint_pos.dim() > 1:
+            gripper_l_action = joint_pos[env_id, 14:15]
+            lift_action = joint_pos[env_id, 16:17]
+            head_action = joint_pos[env_id, 17:19]
+        else:
+            gripper_l_action = joint_pos[14:15]
+            lift_action = joint_pos[16:17]
+            head_action = joint_pos[17:19]
+        
+        # Concatenate full 20D action:
+        # [left_eef(7), right_eef(7), gripper_l(1), gripper_r(1), lift(1), head(2)]
         action = torch.cat([
-            left_pose_action,   # 0-6
-            right_pose_action,  # 7-13
-            left_gripper,       # 14
-            right_gripper,      # 15
-            lift_action,        # 16
-            head_action         # 17-18
+            left_pose_action,      # 0-6: left arm (keep current)
+            right_pose_action,     # 7-13: right arm (Mimic controlled)
+            gripper_l_action,      # 14: left gripper (keep current)
+            right_gripper_action,  # 15: right gripper (Mimic controlled)
+            lift_action,           # 16: lift (keep current)
+            head_action            # 17-18: head (keep current)
         ], dim=0)
         
-        return action.unsqueeze(0)
+        result = action.unsqueeze(0)
+        
+        return result
 
     def action_to_target_eef_pose(self, action: torch.Tensor) -> dict[str, torch.Tensor]:
-        # FFW SG2 dual-arm: action format = [left_eef(7), right_eef(7), gripper_l(1), gripper_r(1), lift(1), head(2)]
-        # Extract left EEF (first 7 dimensions: pos + quat)
-        left_eef_pos = action[:, :3]
-        left_eef_quat = action[:, 3:7]
-        left_eef_rot = PoseUtils.matrix_from_quat(left_eef_quat)
-        left_eef_pose = PoseUtils.make_pose(left_eef_pos, left_eef_rot).clone()
+        eef_name = list(self.cfg.subtask_configs.keys())[0]
         
-        # Extract right EEF (next 7 dimensions: pos + quat)
-        right_eef_pos = action[:, 7:10]
-        right_eef_quat = action[:, 10:14]
-        right_eef_rot = PoseUtils.matrix_from_quat(right_eef_quat)
-        right_eef_pose = PoseUtils.make_pose(right_eef_pos, right_eef_rot).clone()
-
-        return {
-            "left_ee_frame_state": left_eef_pose,
-            "right_ee_frame_state": right_eef_pose
-        }
+        # For FFW-SG2, use right arm as primary manipulator
+        # Action format from IK conversion: [left_eef(7), right_eef(7), gripper_l(1), gripper_r(1), lift(1), head(2)]
+        # We return only the right arm EEF pose (indices 7-13)
+        target_eef_pos = action[:, 7:10]    # Right arm position
+        target_eef_quat = action[:, 10:14]  # Right arm quaternion
+        target_eef_rot = PoseUtils.matrix_from_quat(target_eef_quat)
+        
+        target_eef_pose = PoseUtils.make_pose(target_eef_pos, target_eef_rot).clone()
+        
+        return {eef_name: target_eef_pose}
 
     def actions_to_gripper_actions(self, actions: torch.Tensor) -> dict[str, torch.Tensor]:
-        # FFW SG2 dual-arm: extract both gripper actions
+        eef_name = list(self.cfg.subtask_configs.keys())[0]
+        # For FFW-SG2, return right gripper (index 15)
         # Action format: [left_eef(7), right_eef(7), gripper_l(1), gripper_r(1), lift(1), head(2)]
-        left_gripper = actions[:, 14:15]   # Index 14: left gripper
-        right_gripper = actions[:, 15:16]  # Index 15: right gripper
-        
-        return {
-            "left_ee_frame_state": left_gripper,
-            "right_ee_frame_state": right_gripper
-        }
+        return {eef_name: actions[:, 15:16]}
 
     def get_subtask_term_signals(self, env_ids: Sequence[int] | None = None) -> dict[str, torch.Tensor]:
         """

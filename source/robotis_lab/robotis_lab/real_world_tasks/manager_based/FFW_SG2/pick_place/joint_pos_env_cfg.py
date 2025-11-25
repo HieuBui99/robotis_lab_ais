@@ -93,7 +93,7 @@ class EventCfg:
         func=ffw_sg2_pick_place_events.randomize_object_pose,
         mode="reset",
         params={
-            "pose_range": {"x": (0.575, 0.585), "y": (-0.015, -0.015), "z": (1.38, 1.38)},
+            "pose_range": {"x": (0.57, 0.58), "y": (-0.015, -0.015), "z": (1.38, 1.38)},
             "min_separation": 0.1,
             "asset_cfgs": [SceneEntityCfg("brush")],
         },
@@ -188,7 +188,7 @@ class FFWSG2PickPlaceEnvCfg(PickPlaceEnvCfg):
             width=672,
             data_types=["rgb"],
             spawn=sim_utils.PinholeCameraCfg(
-                focal_length=10.8, focus_distance=200.0, horizontal_aperture=20.955, clipping_range=(0.01, 100.0)
+                focal_length=10.4, focus_distance=200.0, horizontal_aperture=20.955, clipping_range=(0.01, 100.0)
             ),
             offset=CameraCfg.OffsetCfg(
                 pos=(0.0, 0.03, 0.0),

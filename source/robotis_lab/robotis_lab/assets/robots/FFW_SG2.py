@@ -32,7 +32,7 @@ FFW_SG2_CFG = ArticulationCfg(
             solver_position_iteration_count=8,
             solver_velocity_iteration_count=2,
         ),
-        activate_contact_sensors=True,
+        activate_contact_sensors=False,
     ),
     init_state=ArticulationCfg.InitialStateCfg(
         joint_pos={
@@ -96,8 +96,8 @@ FFW_SG2_CFG = ArticulationCfg(
         # Actuators for grippers
         "grippers": ImplicitActuatorCfg(
             joint_names_expr=[
-                "gripper_l_joint1",
-                "gripper_r_joint1",
+                "gripper_l_joint[1-4]",
+                "gripper_r_joint[1-4]",
             ],
             velocity_limit_sim=6.0,
             effort_limit_sim=8.0,
