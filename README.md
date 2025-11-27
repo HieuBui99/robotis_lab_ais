@@ -315,6 +315,11 @@ lerobot-python scripts/sim2real/imitation_learning/data_converter/isaaclab2lerob
     --task=RobotisLab-Real-Pick-Place-FFW-SG2-v0 \
     --robot_type FFW_SG2 \
     --dataset_file ./datasets/joint_generated_aiworker_pick_place.hdf5
+```
+
+* Inference in simulation
+```bash
+python scripts/sim2real/imitation_learning/inference/inference_demos.py --task RobotisLab-Real-Pick-Place-FFW-SG2-v0  --robot_type FFW_SG2 --enable_cameras
 
 ```
 

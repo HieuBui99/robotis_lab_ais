@@ -43,10 +43,9 @@ ROBOT_CONFIGS = {
         "expected_dim": 19,
         "joint_names": [
             "arm_l_joint1.pos", "arm_l_joint2.pos", "arm_l_joint3.pos", "arm_l_joint4.pos",
-            "arm_l_joint5.pos", "arm_l_joint6.pos", "arm_l_joint7.pos",
+            "arm_l_joint5.pos", "arm_l_joint6.pos", "arm_l_joint7.pos", "gripper_l_joint1.pos",
             "arm_r_joint1.pos", "arm_r_joint2.pos", "arm_r_joint3.pos", "arm_r_joint4.pos",
-            "arm_r_joint5.pos", "arm_r_joint6.pos", "arm_r_joint7.pos",
-            "gripper_l_joint1.pos", "gripper_r_joint1.pos",
+            "arm_r_joint5.pos", "arm_r_joint6.pos", "arm_r_joint7.pos", "gripper_r_joint1.pos",
             "head_joint1.pos", "head_joint2.pos", "lift_joint.pos",
         ],
         "cameras": {

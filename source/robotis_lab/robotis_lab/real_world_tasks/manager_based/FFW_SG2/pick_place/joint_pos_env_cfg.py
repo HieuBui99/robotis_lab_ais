@@ -123,8 +123,8 @@ class EventCfg:
         func=ffw_sg2_pick_place_events.randomize_scene_lighting_domelight,
         mode="reset",
         params={
-            "intensity_range": (1000.0, 3000.0),
-            "color_range": ((0.7, 1.0), (0.7, 1.0), (0.7, 1.0)),
+            "intensity_range": (500.0, 3000.0),
+            "color_range": ((0.8, 1.0), (0.8, 1.0), (0.8, 1.0)),
             "asset_cfg": SceneEntityCfg("light"),
         },
     )

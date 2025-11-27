@@ -74,23 +74,23 @@ class FFWSG2PickPlaceMimicEnv(ManagerBasedRLMimicEnv):
             joint_pos_target = self.obs_buf["policy"]["joint_pos_target"]
 
             if joint_pos_target.dim() > 1:
-                left_gripper_action = joint_pos_target[env_id, 14:15]
+                left_gripper_action = joint_pos_target[env_id, 7:8]
                 head_action = joint_pos_target[env_id, 16:18]
                 lift_action = joint_pos_target[env_id, 18:19]
             else:
-                left_gripper_action = joint_pos_target[14:15]
+                left_gripper_action = joint_pos_target[7:8]
                 lift_action = joint_pos_target[18:19]
                 head_action = joint_pos_target[16:18]
 
             # Concatenate full 20D action:
-            # [left_eef(7), right_eef(7), gripper_l(1), gripper_r(1), lift(1), head(2)]
+            # [left_eef(7), gripper_l(1), right_eef(7), gripper_r(1), lift(1), head(2)]
             action = torch.cat([
-                left_pose_action,      # 0-6: left arm (keep current)
-                right_pose_action,     # 7-13: right arm (Mimic controlled)
-                left_gripper_action,      # 14: left gripper (keep current)
-                right_gripper_action,  # 15: right gripper (Mimic controlled)
-                lift_action,           # 16: lift (keep current)
-                head_action            # 17-18: head (keep current)
+                left_pose_action,     # 1-7: left arm (keep current)
+                left_gripper_action,  # 8: left gripper (keep current)
+                right_pose_action,      # 9-15: right arm (Mimic controlled)
+                right_gripper_action,      # 16: right gripper (keep current)
+                lift_action,           # 17: lift (keep current)
+                head_action            # 18-19: head (keep current)
             ], dim=0)
 
             result = action.unsqueeze(0)
@@ -125,14 +125,14 @@ class FFWSG2PickPlaceMimicEnv(ManagerBasedRLMimicEnv):
                 head_action = joint_pos_target[16:18]
 
             # Concatenate full 20D action:
-            # [right_eef(7), left_eef(7), gripper_l(1), gripper_r(1), lift(1), head(2)]
+            # [left_eef(7), gripper_l(1), right_eef(7), gripper_r(1), lift(1), head(2)]
             action = torch.cat([
-                right_pose_action,      # 0-6: right arm (keep current)
-                left_pose_action,     # 7-13: left arm (Mimic controlled)
-                left_gripper_action,  # 14: left gripper (Mimic controlled)
-                right_gripper_action,      # 15: right gripper (keep current)
-                lift_action,           # 16: lift (keep current)
-                head_action            # 17-18: head (keep current)
+                left_pose_action,     # 1-7: left arm (Mimic controlled)
+                left_gripper_action,  # 8: left gripper (Mimic controlled)
+                right_pose_action,      # 9-15: right arm (keep current)
+                right_gripper_action,      # 16: right gripper (keep current)
+                lift_action,           # 17: lift (keep current)
+                head_action            # 18-19: head (keep current)
             ], dim=0)
 
             result = action.unsqueeze(0)
@@ -142,11 +142,21 @@ class FFWSG2PickPlaceMimicEnv(ManagerBasedRLMimicEnv):
         eef_name = list(self.cfg.subtask_configs.keys())[0]
         
         # For FFW-SG2, use right arm as primary manipulator
-        # Action format from IK conversion: [left_eef(7), right_eef(7), gripper_l(1), gripper_r(1), lift(1), head(2)]
-        # We return only the right arm EEF pose (indices 7-13)
-        target_eef_pos = action[:, 7:10]    # Right arm position
-        target_eef_quat = action[:, 10:14]  # Right arm quaternion
-        target_eef_rot = PoseUtils.matrix_from_quat(target_eef_quat)
+        # Action format from IK conversion: [left_eef(7), gripper_l(1), right_eef(7), gripper_r(1), lift(1), head(2)]
+        # We return only the right arm EEF pose (indices 8-14)
+        if "right" in eef_name.lower():
+            target_eef_pos = action[:, 8:11]    # Right arm position
+            target_eef_quat = action[:, 11:15]  # Right arm quaternion
+            target_eef_rot = PoseUtils.matrix_from_quat(target_eef_quat)
+        elif "left" in eef_name.lower():
+            target_eef_pos = action[:, 0:3]    # Left arm position
+            target_eef_quat = action[:, 3:7]  # Left arm quaternion
+            target_eef_rot = PoseUtils.matrix_from_quat(target_eef_quat)
+        else:
+            print("Defaulting to right arm EEF state.")
+            target_eef_pos = action[:, 8:11]    # Right arm position
+            target_eef_quat = action[:, 11:15]  # Right arm quaternion
+            target_eef_rot = PoseUtils.matrix_from_quat(target_eef_quat)
 
         target_eef_pose = PoseUtils.make_pose(target_eef_pos, target_eef_rot).clone()
 
@@ -154,9 +164,17 @@ class FFWSG2PickPlaceMimicEnv(ManagerBasedRLMimicEnv):
 
     def actions_to_gripper_actions(self, actions: torch.Tensor) -> dict[str, torch.Tensor]:
         eef_name = list(self.cfg.subtask_configs.keys())[0]
+
         # For FFW-SG2, return right gripper (index 15)
-        # Action format: [left_eef(7), right_eef(7), gripper_l(1), gripper_r(1), lift(1), head(2)]
-        return {eef_name: actions[:, 15:16]}
+        # Action format: [left_eef(7), gripper_l(1), right_eef(7), gripper_r(1), lift(1), head(2)]
+        if "right" in eef_name.lower():
+            target_gripper_action = actions[:, 15:16]
+        elif "left" in eef_name.lower():
+            target_gripper_action = actions[:, 7:8]
+        else:
+            print("Defaulting to right gripper action.")
+            target_gripper_action = actions[:, 15:16]
+        return {eef_name: target_gripper_action}
 
     def get_subtask_term_signals(self, env_ids: Sequence[int] | None = None) -> dict[str, torch.Tensor]:
         """

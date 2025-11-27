@@ -54,3 +54,29 @@ def task_done(env: ManagerBasedRLEnv, brush_cfg: SceneEntityCfg, basket_cfg: Sce
     done = distance_3d < distance_threshold
 
     return done
+
+
+def brush_dropped(env: ManagerBasedRLEnv, brush_cfg: SceneEntityCfg, velocity_threshold: float = 1.0) -> torch.Tensor:
+    """
+    Failure = brush is falling with velocity exceeding threshold.
+    
+    Args:
+        env: The RL environment.
+        brush_cfg: Configuration for the brush object.
+        velocity_threshold: Maximum allowed velocity magnitude (m/s).
+    
+    Returns:
+        Boolean tensor indicating which environments have dropped the brush.
+    """
+    brush: RigidObject = env.scene[brush_cfg.name]
+    
+    # Get linear velocity of the brush
+    brush_vel = brush.data.root_lin_vel_w
+    
+    # Calculate velocity magnitude (3D vector norm)
+    velocity_magnitude = torch.linalg.vector_norm(brush_vel, dim=1)
+    
+    # Check if velocity exceeds threshold
+    dropped = velocity_magnitude > velocity_threshold
+    
+    return dropped

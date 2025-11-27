@@ -86,8 +86,8 @@ class ActionsCfg:
     # will be set by agent env cfg
     print("ActionsCfg: arm_l_action, arm_r_action, gripper_l_action, gripper_r_action, and lift_action will be set by agent env cfg")
     arm_l_action: mdp.ActionTermCfg = MISSING
-    arm_r_action: mdp.ActionTermCfg = MISSING
     gripper_l_action: mdp.ActionTermCfg = MISSING
+    arm_r_action: mdp.ActionTermCfg = MISSING
     gripper_r_action: mdp.ActionTermCfg = MISSING
     lift_action: mdp.ActionTermCfg = MISSING
     head_action: mdp.ActionTermCfg = MISSING
@@ -104,23 +104,16 @@ class ObservationsCfg:
 
         joint_pos = ObsTerm(
             func=mdp.joint_pos_name,
-            params={"joint_names": ["arm_l_joint1", "arm_l_joint2", "arm_l_joint3", "arm_l_joint4", "arm_l_joint5", "arm_l_joint6", "arm_l_joint7",
-                                    "arm_r_joint1", "arm_r_joint2", "arm_r_joint3", "arm_r_joint4", "arm_r_joint5", "arm_r_joint6", "arm_r_joint7",
-                                    "gripper_l_joint1", "gripper_r_joint1", "head_joint1", "head_joint2", "lift_joint"],
-                    "asset_name": "robot"},
-        )
-        joint_vel = ObsTerm(
-            func=mdp.joint_vel_name,
-            params={"joint_names": ["arm_l_joint1", "arm_l_joint2", "arm_l_joint3", "arm_l_joint4", "arm_l_joint5", "arm_l_joint6", "arm_l_joint7",
-                                    "arm_r_joint1", "arm_r_joint2", "arm_r_joint3", "arm_r_joint4", "arm_r_joint5", "arm_r_joint6", "arm_r_joint7",
-                                    "gripper_l_joint1", "gripper_r_joint1", "head_joint1", "head_joint2", "lift_joint"],
+            params={"joint_names": ["arm_l_joint1", "arm_l_joint2", "arm_l_joint3", "arm_l_joint4", "arm_l_joint5", "arm_l_joint6", "arm_l_joint7", "gripper_l_joint1",
+                                    "arm_r_joint1", "arm_r_joint2", "arm_r_joint3", "arm_r_joint4", "arm_r_joint5", "arm_r_joint6", "arm_r_joint7", "gripper_r_joint1",
+                                    "head_joint1", "head_joint2", "lift_joint"],
                     "asset_name": "robot"},
         )
         joint_pos_target = ObsTerm(
             func=mdp.joint_pos_target_name,
-            params={"joint_names": ["arm_l_joint1", "arm_l_joint2", "arm_l_joint3", "arm_l_joint4", "arm_l_joint5", "arm_l_joint6", "arm_l_joint7",
-                                    "arm_r_joint1", "arm_r_joint2", "arm_r_joint3", "arm_r_joint4", "arm_r_joint5", "arm_r_joint6", "arm_r_joint7",
-                                    "gripper_l_joint1", "gripper_r_joint1", "head_joint1", "head_joint2", "lift_joint"],
+            params={"joint_names": ["arm_l_joint1", "arm_l_joint2", "arm_l_joint3", "arm_l_joint4", "arm_l_joint5", "arm_l_joint6", "arm_l_joint7", "gripper_l_joint1",
+                                    "arm_r_joint1", "arm_r_joint2", "arm_r_joint3", "arm_r_joint4", "arm_r_joint5", "arm_r_joint6", "arm_r_joint7", "gripper_r_joint1",
+                                    "head_joint1", "head_joint2", "lift_joint"],
                     "asset_name": "robot"},
         )
         left_eef_pose = ObsTerm(func=mdp.eef_pose, params={"eef_cfg": SceneEntityCfg("left_eef"), "robot_cfg": SceneEntityCfg("robot")})
@@ -134,6 +127,7 @@ class ObservationsCfg:
         #     func=mdp.image,
         #     params={"sensor_cfg": SceneEntityCfg("cam_wrist_right"), "data_type": "rgb", "normalize": False},
         # )
+
         cam_head_left = ObsTerm(
             func=mdp.image,
             params={"sensor_cfg": SceneEntityCfg("cam_head_left"), "data_type": "rgb", "normalize": False},
@@ -161,6 +155,7 @@ class ObservationsCfg:
             params={
                 "brush_cfg": SceneEntityCfg("brush"),
                 "basket_cfg": SceneEntityCfg("basket"),
+                "distance_threshold": 0.15,
             },
         )
 
@@ -179,13 +174,13 @@ class TerminationsCfg:
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
-    success = DoneTerm(
-        func=mdp.task_done, params={"brush_cfg": SceneEntityCfg("brush"), "basket_cfg": SceneEntityCfg("basket"), "distance_threshold": 0.1}
-    )
+    # success = DoneTerm(
+    #     func=mdp.task_done, params={"brush_cfg": SceneEntityCfg("brush"), "basket_cfg": SceneEntityCfg("basket"), "distance_threshold": 0.15}
+    # )
 
-    brush_dropping = DoneTerm(
-        func=mdp.root_height_below_minimum, params={"minimum_height": 0.5, "asset_cfg": SceneEntityCfg("brush")}
-    )
+    # brush_dropped = DoneTerm(
+    #     func=mdp.brush_dropped, params={"brush_cfg": SceneEntityCfg("brush"), "velocity_threshold": 2.0}
+    # )
 
 
 @configclass
@@ -231,15 +226,15 @@ class PickPlaceEnvCfg(ManagerBasedRLEnvCfg):
                 scale=1.0,
                 use_default_offset=False,
             )
-            self.actions.arm_r_action = mdp.JointPositionActionCfg(
-                asset_name="robot",
-                joint_names=["arm_r_joint[1-7]"],
-                scale=1.0,
-                use_default_offset=False,
-            )
             self.actions.gripper_l_action = mdp.JointPositionActionCfg(
                 asset_name="robot",
                 joint_names=["gripper_l_joint1"],
+                scale=1.0,
+                use_default_offset=False,
+            )
+            self.actions.arm_r_action = mdp.JointPositionActionCfg(
+                asset_name="robot",
+                joint_names=["arm_r_joint[1-7]"],
                 scale=1.0,
                 use_default_offset=False,
             )
@@ -271,6 +266,12 @@ class PickPlaceEnvCfg(ManagerBasedRLEnvCfg):
                 ),
                 body_offset=DifferentialInverseKinematicsActionCfg.OffsetCfg(pos=[0.0, 0.0, -0.2]),
             )
+            self.actions.gripper_l_action = mdp.JointPositionActionCfg(
+                asset_name="robot",
+                joint_names=["gripper_l_joint1"],
+                scale=1.0,
+                use_default_offset=False,
+            )
             self.actions.arm_r_action = DifferentialInverseKinematicsActionCfg(
                 asset_name="robot",
                 joint_names=["arm_r_joint[1-7]"],
@@ -281,12 +282,6 @@ class PickPlaceEnvCfg(ManagerBasedRLEnvCfg):
                     use_relative_mode=False
                 ),
                 body_offset=DifferentialInverseKinematicsActionCfg.OffsetCfg(pos=[0.0, 0.0, -0.2]),
-            )
-            self.actions.gripper_l_action = mdp.JointPositionActionCfg(
-                asset_name="robot",
-                joint_names=["gripper_l_joint1"],
-                scale=1.0,
-                use_default_offset=False,
             )
             self.actions.gripper_r_action = mdp.JointPositionActionCfg(
                 asset_name="robot",

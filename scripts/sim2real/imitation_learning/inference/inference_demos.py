@@ -19,7 +19,6 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Script to run inference with robotis_lab environments using OMYLeader."""
 
 import multiprocessing
 if multiprocessing.get_start_method() != "spawn":

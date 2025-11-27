@@ -55,9 +55,9 @@ class FFWSG2Sdk:
 
         # Define joint names for FFW_SG2 humanoid robot
         self.joint_names = [
-            "arm_l_joint1", "arm_l_joint2", "arm_l_joint3", "arm_l_joint4", "arm_l_joint5", "arm_l_joint6", "arm_l_joint7",
-            "arm_r_joint1", "arm_r_joint2", "arm_r_joint3", "arm_r_joint4", "arm_r_joint5", "arm_r_joint6", "arm_r_joint7",
-            "gripper_l_joint1", "gripper_r_joint1", "lift_joint", "head_joint1", "head_joint2"
+            "arm_l_joint1", "arm_l_joint2", "arm_l_joint3", "arm_l_joint4", "arm_l_joint5", "arm_l_joint6", "arm_l_joint7", "gripper_l_joint1",
+            "arm_r_joint1", "arm_r_joint2", "arm_r_joint3", "arm_r_joint4", "arm_r_joint5", "arm_r_joint6", "arm_r_joint7", "gripper_r_joint1",
+            "lift_joint", "head_joint1", "head_joint2"
         ]
 
         # DDS Topic Manager
