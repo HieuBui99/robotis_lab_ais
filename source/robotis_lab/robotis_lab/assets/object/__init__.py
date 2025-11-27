@@ -38,3 +38,4 @@ from .plastic_basket import *
 from .robotis_aiworker_table import *
 from .robotis_net_table import *
 from .brush_ring import *
+from .silicone_tube_ring import *

@@ -37,6 +37,7 @@ from isaaclab.markers.config import FRAME_MARKER_CFG  # isort: skip
 from robotis_lab.assets.robots.FFW_SG2 import FFW_SG2_CFG  # isort: skip
 from robotis_lab.assets.object.robotis_net_table import NET_TABLE_CFG
 from robotis_lab.assets.object.brush_ring import BRUSH_RING_CFG
+from robotis_lab.assets.object.silicone_tube_ring import SILICONE_TUBE_RING_CFG
 from robotis_lab.assets.object.plastic_basket import PLASTIC_BASKET_CFG
 
 import math
@@ -93,9 +94,19 @@ class EventCfg:
         func=ffw_sg2_pick_place_events.randomize_object_pose,
         mode="reset",
         params={
-            "pose_range": {"x": (0.57, 0.58), "y": (-0.015, -0.015), "z": (1.38, 1.38)},
+            "pose_range": {"x": (0.57, 0.58), "y": (-0.005, -0.005), "z": (1.375, 1.375)},
             "min_separation": 0.1,
             "asset_cfgs": [SceneEntityCfg("brush")],
+        },
+    )
+
+    randomize_silicone_positions = EventTerm(
+        func=ffw_sg2_pick_place_events.randomize_object_pose,
+        mode="reset",
+        params={
+            "pose_range": {"x": (0.57, 0.58), "y": (0.3, 0.3), "z": (1.36, 1.36)},
+            "min_separation": 0.1,
+            "asset_cfgs": [SceneEntityCfg("silicone")],
         },
     )
 
@@ -146,6 +157,7 @@ class FFWSG2PickPlaceEnvCfg(PickPlaceEnvCfg):
         # Set table
         self.scene.table = NET_TABLE_CFG.replace(prim_path="{ENV_REGEX_NS}/Table")
         self.scene.brush = BRUSH_RING_CFG.replace(prim_path="{ENV_REGEX_NS}/Brush")
+        self.scene.silicone = SILICONE_TUBE_RING_CFG.replace(prim_path="{ENV_REGEX_NS}/SiliconeTube")
         self.scene.basket = PLASTIC_BASKET_CFG.replace(prim_path="{ENV_REGEX_NS}/Basket")
 
         # Add semantics to ground

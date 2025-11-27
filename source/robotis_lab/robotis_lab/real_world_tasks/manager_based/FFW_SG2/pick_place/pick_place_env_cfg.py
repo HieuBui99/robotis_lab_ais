@@ -56,6 +56,7 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
     brush: AssetBaseCfg = MISSING
     basket: AssetBaseCfg = MISSING
     table: AssetBaseCfg = MISSING
+    silicone: AssetBaseCfg = MISSING
 
     # cam_wrist_right: CameraCfg = MISSING
     # cam_wrist_left: CameraCfg = MISSING
