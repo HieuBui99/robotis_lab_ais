@@ -39,6 +39,7 @@ from robotis_lab.assets.object.robotis_net_table import NET_TABLE_CFG
 from robotis_lab.assets.object.brush_ring import BRUSH_RING_CFG
 from robotis_lab.assets.object.silicone_tube_ring import SILICONE_TUBE_RING_CFG
 from robotis_lab.assets.object.plastic_basket import PLASTIC_BASKET_CFG
+from robotis_lab.assets.object.tooth_brush import TOOTH_BRUSH_CFG
 
 import math
 
@@ -110,6 +111,16 @@ class EventCfg:
         },
     )
 
+    randomize_tooth_brush_positions = EventTerm(
+        func=ffw_sg2_pick_place_events.randomize_object_pose,
+        mode="reset",
+        params={
+            "pose_range": {"x": (0.57, 0.58), "y": (-0.265, -0.265), "z": (1.37, 1.37)},
+            "min_separation": 0.1,
+            "asset_cfgs": [SceneEntityCfg("tooth_brush")],
+        },
+    )
+
     randomize_basket_positions = EventTerm(
         func=ffw_sg2_pick_place_events.randomize_object_pose,
         mode="reset",
@@ -158,6 +169,7 @@ class FFWSG2PickPlaceEnvCfg(PickPlaceEnvCfg):
         self.scene.table = NET_TABLE_CFG.replace(prim_path="{ENV_REGEX_NS}/Table")
         self.scene.brush = BRUSH_RING_CFG.replace(prim_path="{ENV_REGEX_NS}/Brush")
         self.scene.silicone = SILICONE_TUBE_RING_CFG.replace(prim_path="{ENV_REGEX_NS}/SiliconeTube")
+        self.scene.tooth_brush = TOOTH_BRUSH_CFG.replace(prim_path="{ENV_REGEX_NS}/ToothBrush")
         self.scene.basket = PLASTIC_BASKET_CFG.replace(prim_path="{ENV_REGEX_NS}/Basket")
 
         # Add semantics to ground

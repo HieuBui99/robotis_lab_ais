@@ -29,8 +29,8 @@ FFW_SG2_CFG = ArticulationCfg(
         ),
         articulation_props=ArticulationRootPropertiesCfg(
             enabled_self_collisions=True,
-            solver_position_iteration_count=8,
-            solver_velocity_iteration_count=2,
+            solver_position_iteration_count=32,
+            solver_velocity_iteration_count=1,
         ),
         activate_contact_sensors=False,
     ),
@@ -94,15 +94,17 @@ FFW_SG2_CFG = ArticulationCfg(
         ),
 
         # Actuators for grippers
-        "grippers": ImplicitActuatorCfg(
-            joint_names_expr=[
-                "gripper_l_joint[1-4]",
-                "gripper_r_joint[1-4]",
-            ],
-            velocity_limit_sim=3.0,
-            effort_limit_sim=100.0,
+        "gripper_master": ImplicitActuatorCfg(
+            joint_names_expr=["gripper_l_joint1", "gripper_r_joint1"],
+            effort_limit_sim=60.0,
             stiffness=20.0,
             damping=5.0,
+        ),
+        "gripper_slave": ImplicitActuatorCfg(
+            joint_names_expr=["gripper_l_joint[2-4]", "gripper_r_joint[2-4]"],
+            effort_limit_sim=20.0,
+            stiffness=2.0,
+            damping=0.5,
         ),
 
         # Actuators for head joints
