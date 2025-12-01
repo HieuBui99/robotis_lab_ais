@@ -154,20 +154,20 @@ class ObservationsCfg:
         #     },
         # )
 
-        grasp_brush = ObsTerm(
+        grasp_object = ObsTerm(
             func=mdp.object_grasped,
             params={
                 "robot_cfg": SceneEntityCfg("robot"),
                 "eef_cfg": SceneEntityCfg("left_eef"),
-                "object_cfg": SceneEntityCfg("brush"),
+                "object_cfg": SceneEntityCfg("silicone"),
                 "gripper_joint_name": "gripper_l_joint1",
             },
         )
 
-        brush_in_basket = ObsTerm(
-            func=mdp.brush_in_basket,
+        object_in_basket = ObsTerm(
+            func=mdp.object_in_basket,
             params={
-                "brush_cfg": SceneEntityCfg("brush"),
+                "object_cfg": SceneEntityCfg("silicone"),
                 "basket_cfg": SceneEntityCfg("basket"),
                 "distance_threshold": 0.15,
             },
@@ -189,11 +189,11 @@ class TerminationsCfg:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
     success = DoneTerm(
-        func=mdp.task_done, params={"brush_cfg": SceneEntityCfg("brush"), "basket_cfg": SceneEntityCfg("basket"), "distance_threshold": 0.15}
+        func=mdp.task_done, params={"object_cfg": SceneEntityCfg("silicone"), "basket_cfg": SceneEntityCfg("basket"), "distance_threshold": 0.15}
     )
 
-    brush_dropped = DoneTerm(
-        func=mdp.brush_dropped, params={"brush_cfg": SceneEntityCfg("brush"), "velocity_threshold": 2.0}
+    object_dropped = DoneTerm(
+        func=mdp.object_dropped, params={"object_cfg": SceneEntityCfg("silicone"), "velocity_threshold": 2.0}
     )
 
 

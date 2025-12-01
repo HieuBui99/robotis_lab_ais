@@ -38,43 +38,43 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
 
-def task_done(env: ManagerBasedRLEnv, brush_cfg: SceneEntityCfg, basket_cfg: SceneEntityCfg, distance_threshold: float = 0.10) -> torch.Tensor:
+def task_done(env: ManagerBasedRLEnv, object_cfg: SceneEntityCfg, basket_cfg: SceneEntityCfg, distance_threshold: float = 0.10) -> torch.Tensor:
     """
-    Success = brush placed inside the basket.
+    Success = object placed inside the basket.
     """
 
-    brush: RigidObject = env.scene[brush_cfg.name]
+    object: RigidObject = env.scene[object_cfg.name]
     basket: RigidObject = env.scene[basket_cfg.name]
 
-    brush_pos = brush.data.root_pos_w
+    object_pos = object.data.root_pos_w
     basket_pos = basket.data.root_pos_w
 
-    # Check 3D distance between brush and basket
-    distance_3d = torch.linalg.vector_norm(brush_pos - basket_pos, dim=1)
+    # Check 3D distance between object and basket
+    distance_3d = torch.linalg.vector_norm(object_pos - basket_pos, dim=1)
     done = distance_3d < distance_threshold
 
     return done
 
 
-def brush_dropped(env: ManagerBasedRLEnv, brush_cfg: SceneEntityCfg, velocity_threshold: float = 1.0) -> torch.Tensor:
+def object_dropped(env: ManagerBasedRLEnv, object_cfg: SceneEntityCfg, velocity_threshold: float = 1.0) -> torch.Tensor:
     """
-    Failure = brush is falling with velocity exceeding threshold.
+    Failure = object is falling with velocity exceeding threshold.
     
     Args:
         env: The RL environment.
-        brush_cfg: Configuration for the brush object.
+        object_cfg: Configuration for the object.
         velocity_threshold: Maximum allowed velocity magnitude (m/s).
     
     Returns:
-        Boolean tensor indicating which environments have dropped the brush.
+        Boolean tensor indicating which environments have dropped the object.
     """
-    brush: RigidObject = env.scene[brush_cfg.name]
+    object: RigidObject = env.scene[object_cfg.name]
     
-    # Get linear velocity of the brush
-    brush_vel = brush.data.root_lin_vel_w
+    # Get linear velocity of the object
+    object_vel = object.data.root_lin_vel_w
     
     # Calculate velocity magnitude (3D vector norm)
-    velocity_magnitude = torch.linalg.vector_norm(brush_vel, dim=1)
+    velocity_magnitude = torch.linalg.vector_norm(object_vel, dim=1)
     
     # Check if velocity exceeds threshold
     dropped = velocity_magnitude > velocity_threshold

@@ -34,9 +34,9 @@ class FFWSG2PickPlaceMimicEnvCfg(FFWSG2PickPlaceEnvCfg, MimicEnvCfg):
     def __post_init__(self):
         super().__post_init__()
 
-        self.datagen_config.name = "pick_and_place_the_brush_in_the_basket"
+        self.datagen_config.name = "pick_and_place_the_object_in_the_basket"
         self.datagen_config.generation_guarantee = True
-        self.datagen_config.generation_keep_failed = True
+        self.datagen_config.generation_keep_failed = False
         self.datagen_config.generation_num_trials = 10
         self.datagen_config.generation_select_src_per_subtask = True
         self.datagen_config.generation_transform_first_robot_pose = False
@@ -47,16 +47,16 @@ class FFWSG2PickPlaceMimicEnvCfg(FFWSG2PickPlaceEnvCfg, MimicEnvCfg):
 
         subtask_configs = []
         """
-        subtask: pick_brush -> place_brush_in_basket
+        subtask: pick_object -> place_object_in_basket
         """
-        # First subtask: Grasp the brush
+        # First subtask: Grasp the object
         subtask_configs.append(
             SubTaskConfig(
                 # Each subtask involves manipulation with respect to a single object frame.
-                object_ref="brush",
+                object_ref="silicone",
                 # This key corresponds to the binary indicator in "datagen_info" that signals
                 # when this subtask is finished (e.g., on a 0 to 1 edge).
-                subtask_term_signal="grasp_brush",
+                subtask_term_signal="grasp_object",
                 # Specifies time offsets for data generation when splitting a trajectory into
                 # subtask segments. Random offsets are added to the termination boundary.
                 subtask_term_offset_range=(10, 20),
@@ -72,15 +72,15 @@ class FFWSG2PickPlaceMimicEnvCfg(FFWSG2PickPlaceEnvCfg, MimicEnvCfg):
                 num_fixed_steps=0,
                 # If True, apply action noise during the interpolation phase and execution
                 apply_noise_during_interpolation=False,
-                description="Grasp brush",
-                next_subtask_description="Place brush in basket",
+                description="Grasp object",
+                next_subtask_description="Place object in basket",
             )
         )
-        # Second subtask: Place brush in basket
+        # Second subtask: Place object in basket
         subtask_configs.append(
             SubTaskConfig(
                 object_ref="basket",
-                subtask_term_signal="brush_in_basket",
+                subtask_term_signal="object_in_basket",
                 subtask_term_offset_range=(5, 15),
                 selection_strategy="nearest_neighbor_object",
                 selection_strategy_kwargs={"nn_k": 3},
@@ -88,7 +88,7 @@ class FFWSG2PickPlaceMimicEnvCfg(FFWSG2PickPlaceEnvCfg, MimicEnvCfg):
                 num_interpolation_steps=10,
                 num_fixed_steps=0,
                 apply_noise_during_interpolation=False,
-                description="Place brush in basket",
+                description="Place object in basket",
                 next_subtask_description="Task complete",
             )
         )

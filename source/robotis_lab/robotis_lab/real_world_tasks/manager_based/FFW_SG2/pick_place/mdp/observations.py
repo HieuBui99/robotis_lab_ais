@@ -156,21 +156,21 @@ def joint_pos_target_name(env: ManagerBasedEnv, joint_names: list[str], asset_na
     return joint_pos_target
 
 
-def brush_in_basket(
+def object_in_basket(
     env: ManagerBasedRLEnv,
-    brush_cfg: SceneEntityCfg,
+    object_cfg: SceneEntityCfg,
     basket_cfg: SceneEntityCfg,
     distance_threshold: float = 0.1,
 ) -> torch.Tensor:
-    """Check if the brush is placed inside the basket."""
-    brush: RigidObject = env.scene[brush_cfg.name]
+    """Check if the object is placed inside the basket."""
+    object: RigidObject = env.scene[object_cfg.name]
     basket: RigidObject = env.scene[basket_cfg.name]
 
-    brush_pos = brush.data.root_pos_w
+    object_pos = object.data.root_pos_w
     basket_pos = basket.data.root_pos_w
 
-    # Check 3D distance between brush and basket
-    distance_3d = torch.linalg.vector_norm(brush_pos - basket_pos, dim=1)
+    # Check 3D distance between object and basket
+    distance_3d = torch.linalg.vector_norm(object_pos - basket_pos, dim=1)
     done = distance_3d < distance_threshold
 
     return done
