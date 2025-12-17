@@ -75,10 +75,10 @@ FFW_SG2_CFG = ArticulationCfg(
         # Actuator for vertical lift joint
         "lift": ImplicitActuatorCfg(
             joint_names_expr=["lift_joint"],
-            velocity_limit_sim=5.0,
-            effort_limit_sim=10000000.0,
+            velocity_limit_sim=0.2,
+            effort_limit_sim=1000000.0,
             stiffness=10000.0,
-            damping=2000.0,
+            damping=100.0,
         ),
 
         # Actuators for both arms
@@ -87,18 +87,19 @@ FFW_SG2_CFG = ArticulationCfg(
                 "arm_l_joint[1-7]",
                 "arm_r_joint[1-7]",
             ],
-            velocity_limit_sim=10.0,
-            effort_limit_sim=10000.0,
-            stiffness=400.0,
-            damping=50.0,
+            velocity_limit_sim=6.0,
+            effort_limit_sim=100.0,
+            stiffness=120.0,
+            damping=4.0,
         ),
 
         # Actuators for grippers
         "gripper_master": ImplicitActuatorCfg(
             joint_names_expr=["gripper_l_joint1", "gripper_r_joint1"],
-            effort_limit_sim=60.0,
-            stiffness=20.0,
-            damping=5.0,
+            velocity_limit_sim=2.2,
+            effort_limit_sim=30.0,
+            stiffness=100.0,
+            damping=4.0,
         ),
         "gripper_slave": ImplicitActuatorCfg(
             joint_names_expr=["gripper_l_joint[2-4]", "gripper_r_joint[2-4]"],
@@ -110,10 +111,10 @@ FFW_SG2_CFG = ArticulationCfg(
         # Actuators for head joints
         "head": ImplicitActuatorCfg(
             joint_names_expr=["head_joint1", "head_joint2"],
-            velocity_limit_sim=5.0,
-            effort_limit_sim=300.0,
-            stiffness=200.0,
-            damping=50.0,
+            velocity_limit_sim=2.0,
+            effort_limit_sim=30.0,
+            stiffness=150.0,
+            damping=3.0,
         ),
     }
 )

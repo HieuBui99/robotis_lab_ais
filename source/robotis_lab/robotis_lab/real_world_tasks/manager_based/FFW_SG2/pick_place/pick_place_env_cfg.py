@@ -229,14 +229,14 @@ class PickPlaceEnvCfg(ManagerBasedRLEnvCfg):
             },
         )
 
-        # self.terminations.success = DoneTerm(
-        #     func=mdp.task_done,
-        #     params={
-        #         "object_cfg": SceneEntityCfg(self.target_object),
-        #         "basket_cfg": SceneEntityCfg("basket"),
-        #         "distance_threshold": 0.15,
-        #     },
-        # )
+        self.terminations.success = DoneTerm(
+            func=mdp.task_done,
+            params={
+                "object_cfg": SceneEntityCfg(self.target_object),
+                "basket_cfg": SceneEntityCfg("basket"),
+                "distance_threshold": 0.15,
+            },
+        )
 
         self.terminations.object_dropped = DoneTerm(
             func=mdp.object_dropped,

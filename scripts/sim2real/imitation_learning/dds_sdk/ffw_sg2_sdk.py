@@ -43,13 +43,15 @@ class FFWSG2Sdk:
         self.domain_id = int(os.getenv("ROS_DOMAIN_ID", 0))
         self.left_arm_trajectory_cmd = None
         self.right_arm_trajectory_cmd = None
+        self.head_joint_trajectory_cmd = None
+        self.lift_joint_trajectory_cmd = None
         self._started = False
         self._reset_state = False
         self._additional_callbacks = {}
         self._first_episode = True  # Track if this is the first episode
         self._episode_phase = "idle"  # Current state: "idle" (waiting) or "recording" (active episode)
         self.lock = threading.Lock()  # Protect shared state
-        
+
         # Initialize current joint state - will be updated only when commands are received
         self.current_joint_state = {}
 
@@ -72,6 +74,10 @@ class FFWSG2Sdk:
             topic_name="/leader/joint_trajectory_command_broadcaster_right/joint_trajectory",
             topic_type=JointTrajectory_
         )
+        self.head_joint_trajectory_reader = topic_manager.topic_reader(
+            topic_name="/leader/joystick_controller_left/joint_trajectory",
+            topic_type=JointTrajectory_
+        )
         self.lift_joint_trajectory_reader = topic_manager.topic_reader(
             topic_name="/leader/joystick_controller_right/joint_trajectory",
             topic_type=JointTrajectory_
@@ -83,7 +89,7 @@ class FFWSG2Sdk:
 
         # Publishers
         self.joint_state_writer = topic_manager.topic_writer(
-            topic_name="joint_states",
+            topic_name="joint_states_sim",
             topic_type=JointState_
         )
         self.head_cam_writer = topic_manager.topic_writer(
@@ -103,11 +109,13 @@ class FFWSG2Sdk:
         self.left_thread = threading.Thread(target=self._left_arm_subscriber_loop, daemon=True)
         self.right_thread = threading.Thread(target=self._right_arm_subscriber_loop, daemon=True)
         self.lift_thread = threading.Thread(target=self._lift_joint_subscriber_loop, daemon=True)
+        self.head_thread = threading.Thread(target=self._head_joint_subscriber_loop, daemon=True)
         self.joystick_thread = threading.Thread(target=self._joystick_subscriber_loop, daemon=True)
 
         self.left_thread.start()
         self.right_thread.start()
         self.lift_thread.start()
+        self.head_thread.start()
         self.joystick_thread.start()
 
         # Keyboard listener
@@ -218,8 +226,8 @@ class FFWSG2Sdk:
                         joint_dict = dict(zip(msg.joint_names, msg.points[-1].positions))
                         with self.lock:
                             # Update only the lift joint command
-                            self.left_arm_trajectory_cmd = self.left_arm_trajectory_cmd or {}
-                            self.left_arm_trajectory_cmd.update(joint_dict)
+                            self.lift_joint_trajectory_cmd = self.lift_joint_trajectory_cmd or {}
+                            self.lift_joint_trajectory_cmd.update(joint_dict)
                 time.sleep(0.001)  # 1ms sleep to reduce CPU load
         except Exception as e:
             print("Lift joint subscriber thread exception:", e)
@@ -229,6 +237,27 @@ class FFWSG2Sdk:
             except:
                 pass
             print("Lift joint subscriber closed")
+
+    def _head_joint_subscriber_loop(self):
+        """Continuously read head joint trajectory commands from the leader."""
+        try:
+            while self.running:
+                for msg in self.head_joint_trajectory_reader.take_iter():
+                    if msg and msg.points:
+                        joint_dict = dict(zip(msg.joint_names, msg.points[-1].positions))
+                        with self.lock:
+                            # Update only the head joint commands
+                            self.head_joint_trajectory_cmd = self.head_joint_trajectory_cmd or {}
+                            self.head_joint_trajectory_cmd.update(joint_dict)
+                time.sleep(0.001)  # 1ms sleep to reduce CPU load
+        except Exception as e:
+            print("Head joint subscriber thread exception:", e)
+        finally:
+            try:
+                self.head_joint_trajectory_reader.Close()
+            except:
+                pass
+            print("Head joint subscriber closed")
 
     def _joystick_subscriber_loop(self):
         """Continuously read joystick track trigger commands from the leader."""
@@ -384,6 +413,12 @@ class FFWSG2Sdk:
             # Update with right arm commands if available
             if self.right_arm_trajectory_cmd:
                 joint_state.update(self.right_arm_trajectory_cmd)
+
+            if self.head_joint_trajectory_cmd:
+                joint_state.update(self.head_joint_trajectory_cmd)
+
+            if self.lift_joint_trajectory_cmd:
+                joint_state.update(self.lift_joint_trajectory_cmd)
             
             return joint_state
 
@@ -414,6 +449,9 @@ class FFWSG2Sdk:
         self.running = False
         self.left_thread.join()
         self.right_thread.join()
+        self.lift_thread.join()
+        self.head_thread.join()
+        self.joystick_thread.join()
         
         for obj in [self.left_arm_joint_trajectory_reader, self.right_arm_joint_trajectory_reader,
                     self.joint_state_writer, self.head_cam_writer, 
