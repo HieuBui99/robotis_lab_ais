@@ -88,7 +88,6 @@ class ActionsCfg:
     """Action specifications for the MDP."""
 
     # will be set by agent env cfg
-    print("ActionsCfg: arm_l_action, arm_r_action, gripper_l_action, gripper_r_action, and lift_action will be set by agent env cfg")
     arm_l_action: mdp.ActionTermCfg = MISSING
     gripper_l_action: mdp.ActionTermCfg = MISSING
     arm_r_action: mdp.ActionTermCfg = MISSING

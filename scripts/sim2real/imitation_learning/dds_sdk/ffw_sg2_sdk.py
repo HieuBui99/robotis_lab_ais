@@ -89,7 +89,7 @@ class FFWSG2Sdk:
 
         # Publishers
         self.joint_state_writer = topic_manager.topic_writer(
-            topic_name="joint_states_sim",
+            topic_name="joint_states",
             topic_type=JointState_
         )
         self.head_cam_writer = topic_manager.topic_writer(

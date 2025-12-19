@@ -74,20 +74,37 @@ class EventCfg:
         mode="reset",
         params={
             "mean": 0.0,
-            "std": 0.03,
+            "std": 0.05,
             "joint_names": [
                 "arm_l_joint1", "arm_l_joint2", "arm_l_joint3", "arm_l_joint4",
                 "arm_l_joint5", "arm_l_joint6", "arm_l_joint7",
                 "arm_r_joint1", "arm_r_joint2", "arm_r_joint3", "arm_r_joint4",
                 "arm_r_joint5", "arm_r_joint6", "arm_r_joint7",
+                "head_joint1", "head_joint2",
             ],
             "asset_cfg": SceneEntityCfg("robot"),
         },
     )
 
+    randomize_head_camera = EventTerm(
+        func=ffw_sg2_pick_place_events.randomize_camera_pose,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("cam_head"),
+            "pose_range": {
+                "x": (0.0, 0.01),
+                "y": (-0.01, 0.01),
+                "z": (-0.01, 0.01),
+                "roll": (-0.01, 0.01),
+                "pitch": (-0.01, 0.01),
+                "yaw": (-0.01, 0.01),
+            },
+            "convention": "ros",
+        },
+    )
+
     # ========== Scene Object Placement ==========
-    # Note: randomize_table_with_objects is set dynamically in __post_init__
-    # to include the correct target object and other objects
+
     randomize_table_with_objects: EventTerm | None = None
 
     # ========== Visual Domain Randomization ==========
@@ -109,6 +126,7 @@ class EventCfg:
             "asset_cfg": SceneEntityCfg("light"),
         },
     )
+
 @configclass
 class FFWSG2PickPlaceEnvCfg(PickPlaceEnvCfg):
     def __post_init__(self):
@@ -129,7 +147,7 @@ class FFWSG2PickPlaceEnvCfg(PickPlaceEnvCfg):
                 "basket_relative_pose": {"x": 0.41, "y": 0.0, "z": 0.72},
                 "target_side": self.target_side,
                 "table_pose_range": {
-                    "x": (1.0, 1.0),
+                    "x": (-0.02, 0.02),
                     "y": (-0.02, 0.02),
                     "z": (0.0, 0.0),
                     "roll": (0.0, 0.0),
