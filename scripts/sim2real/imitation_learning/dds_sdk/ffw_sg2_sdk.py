@@ -194,8 +194,8 @@ class FFWSG2Sdk:
         finally:
             try:
                 self.left_arm_joint_trajectory_reader.Close()
-            except:
-                pass
+            except Exception as e:
+                print(f"Error closing left arm subscriber: {e}")
             print("Left arm subscriber closed")
 
     def _right_arm_subscriber_loop(self):
