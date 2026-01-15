@@ -28,6 +28,8 @@ Fixed
 * Renamed camera references from ``cam_head_left`` to ``cam_head`` for consistency
 * Updated ``robotis_dds_python`` submodule to latest version
 
+* Contributors: Taehyeong Kim
+
 1.0.0 (2025-11-17)
 ------------------
 ### Added
