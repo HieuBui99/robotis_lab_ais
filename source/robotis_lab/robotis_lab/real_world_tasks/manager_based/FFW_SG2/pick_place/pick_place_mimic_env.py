@@ -89,8 +89,8 @@ class FFWSG2PickPlaceMimicEnv(ManagerBasedRLMimicEnv):
                 left_gripper_action,  # 8: left gripper (keep current)
                 right_pose_action,      # 9-15: right arm (Mimic controlled)
                 right_gripper_action,      # 16: right gripper (keep current)
-                lift_action,           # 17: lift (keep current)
-                head_action            # 18-19: head (keep current)
+                head_action,           # 17-18: head (keep current)
+                lift_action            # 19: lift (keep current)
             ], dim=0)
 
             result = action.unsqueeze(0)
