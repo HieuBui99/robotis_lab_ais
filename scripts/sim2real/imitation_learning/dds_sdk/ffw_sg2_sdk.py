@@ -268,8 +268,8 @@ class FFWSG2Sdk:
                     if self.mode != 'record':
                         continue
 
-                    tack_trigger = msg.data
-                    if tack_trigger == 'right':
+                    joystick_trigger = msg.data
+                    if joystick_trigger == 'right':
                         with self.lock:
                             if self._first_episode:
                                 # First episode: only start recording
@@ -288,7 +288,7 @@ class FFWSG2Sdk:
                                 self._started = True
                                 self._reset_state = False
                                 self._episode_phase = "recording"  # Now recording
-                    elif tack_trigger == 'left':
+                    elif joystick_trigger == 'left':
                         with self.lock:
                             # Reset current episode (don't save)
                             self._started = False
