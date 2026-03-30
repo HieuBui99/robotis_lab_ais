@@ -57,7 +57,8 @@ class OMYSdk:
 
         # Subscribers
         self.joint_trajectory_reader = topic_manager.topic_reader(
-            topic_name="leader/joint_trajectory",
+            # topic_name="leader/joint_trajectory",
+            topic_name="/leader/action",
             topic_type=JointTrajectory_
         )
 

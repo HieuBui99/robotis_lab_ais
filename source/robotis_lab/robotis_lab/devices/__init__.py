@@ -11,19 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# Author: Taehyeong Kim
 
-# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
-# All rights reserved.
-#
-# SPDX-License-Identifier: BSD-3-Clause
+"""Teleoperation devices for robotis_lab."""
 
-"""OMY environments for fixed-arm robots."""
+from .leader import LeaderDevice, LeaderDeviceCfg
 
-import gymnasium as gym
-from .cabinet import *  # noqa
-from .lift import *  # noqa
-from .push import *  # noqa
-from .reach import *  # noqa
-from .stack import *  # noqa
+__all__ = ["LeaderDevice", "LeaderDeviceCfg"]

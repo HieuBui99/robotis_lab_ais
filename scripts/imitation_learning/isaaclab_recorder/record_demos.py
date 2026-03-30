@@ -40,7 +40,7 @@ parser.add_argument(
     help=(
         "Teleop device. Set here (legacy) or via the environment config. If using the environment config, pass the"
         " device key/name defined under 'teleop_devices' (it can be a custom name, not necessarily 'handtracking')."
-        " Built-ins: keyboard, spacemouse, gamepad. Not all tasks support all built-ins."
+        " Built-ins: keyboard, spacemouse, gamepad, leader. Not all tasks support all built-ins."
     ),
 )
 parser.add_argument(
@@ -114,12 +114,41 @@ from collections.abc import Callable
 from isaaclab.envs import DirectRLEnvCfg, ManagerBasedRLEnvCfg
 from isaaclab.envs.mdp.recorders.recorders_cfg import ActionStateRecorderManagerCfg
 from isaaclab.envs.ui import EmptyWindow
-from isaaclab.managers import DatasetExportMode
+from isaaclab.managers import DatasetExportMode, RecorderTermCfg
+from isaaclab.managers.recorder_manager import RecorderTerm
+from isaaclab.utils import configclass
 
 import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils.parse_cfg import parse_env_cfg
 
 import robotis_lab
+
+
+# Custom recorder for RGB camera observations
+class RGBCameraObservationsRecorder(RecorderTerm):
+    """Recorder term that records RGB camera observations from the 'rgb_camera' observation group."""
+
+    def record_pre_step(self):
+        """Record RGB camera observations before each step."""
+        # Check if rgb_camera group exists in observations
+        if "rgb_camera" in self._env.obs_buf:
+            return "obs", self._env.obs_buf["rgb_camera"]
+        return None, None
+
+
+@configclass
+class RGBCameraObservationsRecorderCfg(RecorderTermCfg):
+    """Configuration for the RGB camera observations recorder term."""
+
+    class_type: type[RecorderTerm] = RGBCameraObservationsRecorder
+
+
+@configclass
+class ActionStateWithCameraRecorderManagerCfg(ActionStateRecorderManagerCfg):
+    """Recorder configuration that includes actions, states, and RGB camera observations."""
+
+    # Add RGB camera recorder on top of the base action/state recorders
+    record_rgb_camera_observations = RGBCameraObservationsRecorderCfg()
 
 class RateLimiter:
     """Convenience class for enforcing rates in loops."""
@@ -227,7 +256,8 @@ def create_environment_config(
     env_cfg.terminations.time_out = None
     env_cfg.observations.policy.concatenate_terms = False
 
-    env_cfg.recorders: ActionStateRecorderManagerCfg = ActionStateRecorderManagerCfg()
+    # Use custom recorder that includes RGB camera observations
+    env_cfg.recorders = ActionStateWithCameraRecorderManagerCfg()
     env_cfg.recorders.dataset_export_dir_path = output_dir
     env_cfg.recorders.dataset_filename = output_file_name
     env_cfg.recorders.dataset_export_mode = DatasetExportMode.EXPORT_SUCCEEDED_ONLY
@@ -256,13 +286,14 @@ def create_environment(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg) -> gym.En
         exit(1)
 
 
-def setup_teleop_device(callbacks: dict[str, Callable]) -> object:
+def setup_teleop_device(env: gym.Env, callbacks: dict[str, Callable]) -> object:
     """Set up the teleoperation device based on configuration.
 
     Attempts to create a teleoperation device based on the environment configuration.
     Falls back to default devices if the specified device is not found in the configuration.
 
     Args:
+        env: The environment instance (required for leader device FK computation)
         callbacks: Dictionary mapping callback keys to functions that will be
                    attached to the teleop device
 
@@ -280,12 +311,27 @@ def setup_teleop_device(callbacks: dict[str, Callable]) -> object:
             omni.log.warn(f"No teleop device '{args_cli.teleop_device}' found in environment config. Creating default.")
             # Create fallback teleop device
             if args_cli.teleop_device.lower() == "keyboard":
+                # Check if app window is available before creating keyboard device
+                appwindow = omni.appwindow.get_default_app_window()
+                if appwindow is None:
+                    omni.log.error("App window is not available. Cannot create keyboard device.")
+                    omni.log.error("This usually means the simulation is not fully initialized.")
+                    exit(1)
                 teleop_interface = Se3Keyboard(Se3KeyboardCfg(pos_sensitivity=0.2, rot_sensitivity=0.5))
             elif args_cli.teleop_device.lower() == "spacemouse":
                 teleop_interface = Se3SpaceMouse(Se3SpaceMouseCfg(pos_sensitivity=0.2, rot_sensitivity=0.5))
+            elif args_cli.teleop_device.lower() == "leader":
+                from robotis_lab.devices.leader import LeaderDevice, LeaderDeviceCfg
+                cfg = LeaderDeviceCfg(
+                    sim_device=env.device,
+                    topic_name="/leader/action",
+                    gripper_threshold=0.35,
+                    domain_id=30
+                )
+                teleop_interface = LeaderDevice(cfg=cfg)
             else:
                 omni.log.error(f"Unsupported teleop device: {args_cli.teleop_device}")
-                omni.log.error("Supported devices: keyboard, spacemouse, handtracking")
+                omni.log.error("Supported devices: keyboard, spacemouse, handtracking, leader")
                 exit(1)
 
             # Add callbacks to fallback device
@@ -411,6 +457,8 @@ def run_simulation_loop(
     current_recorded_demo_count = 0
     success_step_count = 0
     should_reset_recording_instance = False
+    should_reset_task_success = False  # NEW: Save episode
+    should_start_recording_instance = False  # NEW: Start recording from 'B' key
     running_recording_instance = not args_cli.xr
 
     # Callback closures for the teleop device
@@ -419,10 +467,17 @@ def run_simulation_loop(
         should_reset_recording_instance = True
         print("Recording instance reset requested")
 
-    def start_recording_instance():
-        nonlocal running_recording_instance
-        running_recording_instance = True
-        print("Recording started")
+    def reset_task_success():
+        """Mark episode as successful and export it."""
+        nonlocal should_reset_task_success
+        should_reset_task_success = True
+        print("Episode marked as successful")
+
+    def start_recording_callback():
+        """Start recording (triggered by 'B' key)."""
+        nonlocal should_start_recording_instance
+        should_start_recording_instance = True
+        print("Start recording requested")
 
     def stop_recording_instance():
         nonlocal running_recording_instance
@@ -431,21 +486,28 @@ def run_simulation_loop(
 
     # Set up teleoperation callbacks
     teleoperation_callbacks = {
-        "R": reset_recording_instance,
-        "START": start_recording_instance,
+        "R": reset_recording_instance,       # Reset/discard episode
+        "N": reset_task_success,             # NEW: Save successful episode
+        "START": start_recording_callback,   # NEW: Start recording (triggered by 'B' key)
         "STOP": stop_recording_instance,
         "RESET": reset_recording_instance,
     }
 
-    teleop_interface = setup_teleop_device(teleoperation_callbacks)
-    teleop_interface.add_callback("R", reset_recording_instance)
-
-    # Reset before starting
+    # Reset environment first - this initializes the simulation and app window
     env.sim.reset()
     env.reset()
+
+    # Now create teleop device after simulation is fully initialized
+    teleop_interface = setup_teleop_device(env, teleoperation_callbacks)
+
+    # Register all callbacks with teleop device
+    for key, callback in teleoperation_callbacks.items():
+        teleop_interface.add_callback(key, callback)
+
+    # Reset teleop interface
     teleop_interface.reset()
 
-    label_text = f"Recorded {current_recorded_demo_count} successful demonstrations."
+    label_text = "Press 'B' to start recording | 'R' to reset | 'N' to save episode"
     instruction_display = setup_ui(label_text, env)
 
     subtasks = {}
@@ -454,6 +516,70 @@ def run_simulation_loop(
         while simulation_app.is_running():
             # Get keyboard command
             action = teleop_interface.advance()
+
+            # Handle successful episode (save and export, then STOP recording)
+            if should_reset_task_success:
+                # Mark episode as successful
+                env.recorder_manager.set_success_to_episodes(
+                    env_ids=[0],  # Single environment recording
+                    success_values=torch.tensor([True], dtype=torch.bool, device=env.device)
+                )
+                # Export the episode
+                env.recorder_manager.export_episodes()
+                # Reset environment
+                env.reset()
+                # Update counter
+                current_recorded_demo_count += 1
+                # Update UI
+                if args_cli.num_demos > 0 and current_recorded_demo_count < args_cli.num_demos:
+                    label_text = f"Episode {current_recorded_demo_count} saved! Press 'B' to record episode {current_recorded_demo_count + 1}"
+                else:
+                    label_text = f"Episode {current_recorded_demo_count} saved!"
+                instruction_display.show_demo(label_text)
+                print(label_text)
+                # Reset flag
+                should_reset_task_success = False
+                # STOP recording (require 'B' press for next episode)
+                running_recording_instance = False
+                # Reset success counter
+                success_step_count = 0
+                continue
+
+            # Handle reset/discard (existing logic)
+            if should_reset_recording_instance:
+                # Clear episode cache (discard episode)
+                if hasattr(env.recorder_manager, '_clear_episode_cache'):
+                    env.recorder_manager._clear_episode_cache()
+                # Reset environment
+                env.reset()
+                # Update UI
+                label_text = "Episode discarded. Press 'B' to start."
+                instruction_display.show_demo(label_text)
+                print(label_text)
+                # Reset flag
+                should_reset_recording_instance = False
+                running_recording_instance = False
+                # Reset success counter
+                success_step_count = 0
+                continue
+
+            # Handle actions being None (reset signal from device)
+            if action is None:
+                # Device signaled a reset
+                should_reset_recording_instance = True
+                continue
+
+            # Handle start recording callback
+            if should_start_recording_instance:
+                running_recording_instance = True
+                if args_cli.num_demos > 0:
+                    label_text = f"Recording episode {current_recorded_demo_count + 1} of {args_cli.num_demos}"
+                else:
+                    label_text = f"Recording episode {current_recorded_demo_count + 1}"
+                instruction_display.show_demo(label_text)
+                print(label_text)
+                should_start_recording_instance = False
+
             # Expand to batch dimension
             actions = action.repeat(env.num_envs, 1)
 
@@ -461,6 +587,8 @@ def run_simulation_loop(
             if running_recording_instance:
                 # Compute actions based on environment
                 obv = env.step(actions)
+                # print("Joint Positions:", obv[0]['policy']["joint_pos"])  # Debug print for joint positions
+                # print("Actions:", action, obv[0]['policy']['actions'])
                 if subtasks is not None:
                     if subtasks == {}:
                         subtasks = obv[0].get("subtask_terms")
@@ -472,16 +600,11 @@ def run_simulation_loop(
             # Check for success condition
             success_step_count, success_reset_needed = process_success_condition(env, success_term, success_step_count)
             if success_reset_needed:
-                should_reset_recording_instance = True
-
-            # Update demo count if it has changed
-            if env.recorder_manager.exported_successful_episode_count > current_recorded_demo_count:
-                current_recorded_demo_count = env.recorder_manager.exported_successful_episode_count
-                label_text = f"Recorded {current_recorded_demo_count} successful demonstrations."
-                print(label_text)
+                # Automatic success condition met - same as pressing 'N'
+                should_reset_task_success = True
 
             # Check if we've reached the desired number of demos
-            if args_cli.num_demos > 0 and env.recorder_manager.exported_successful_episode_count >= args_cli.num_demos:
+            if args_cli.num_demos > 0 and current_recorded_demo_count >= args_cli.num_demos:
                 label_text = f"All {current_recorded_demo_count} demonstrations recorded.\nExiting the app."
                 instruction_display.show_demo(label_text)
                 print(label_text)
@@ -493,10 +616,10 @@ def run_simulation_loop(
                         env.sim.render()
                 break
 
-            # Handle reset if requested
-            if should_reset_recording_instance:
-                success_step_count = handle_reset(env, success_step_count, instruction_display, label_text)
-                should_reset_recording_instance = False
+            # Remove the old reset handling as it's now handled earlier
+            # if should_reset_recording_instance:
+            #     success_step_count = handle_reset(env, success_step_count, instruction_display, label_text)
+            #     should_reset_recording_instance = False
 
             # Check if simulation is stopped
             if env.sim.is_stopped():

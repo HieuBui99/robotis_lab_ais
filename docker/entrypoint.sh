@@ -14,5 +14,9 @@ if [ ! -L "${ISAACLAB_PATH}/_isaac_sim" ]; then
     ln -sf ${ISAACSIM_ROOT_PATH} ${ISAACLAB_PATH}/_isaac_sim
 fi
 
+# Add Isaac Lab source to PYTHONPATH
+export PYTHONPATH="${ISAACLAB_PATH}/source/isaaclab:${PYTHONPATH}"
+echo "[INFO] Added Isaac Lab to PYTHONPATH: ${ISAACLAB_PATH}/source/isaaclab"
+
 # Execute the command passed to docker run
 exec "$@"
