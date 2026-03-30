@@ -1,0 +1,239 @@
+# Copyright 2025 ROBOTIS CO., LTD.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Author: Taehyeong Kim
+
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+from dataclasses import MISSING
+from typing import Any
+
+import isaaclab.sim as sim_utils
+from isaaclab.assets import ArticulationCfg, AssetBaseCfg
+from isaaclab.devices.openxr import XrCfg
+from isaaclab.envs import ManagerBasedRLEnvCfg
+import isaaclab.envs.mdp as isaaclab_mdp
+from isaaclab.managers import ObservationGroupCfg as ObsGroup
+from isaaclab.managers import ObservationTermCfg as ObsTerm
+from isaaclab.managers import SceneEntityCfg
+from isaaclab.managers import TerminationTermCfg as DoneTerm
+from isaaclab.scene import InteractiveSceneCfg
+from isaaclab.sensors.frame_transformer.frame_transformer_cfg import FrameTransformerCfg
+from isaaclab.sensors import CameraCfg
+from isaaclab.sim.spawners.from_files.from_files_cfg import GroundPlaneCfg, UsdFileCfg
+from isaaclab.utils import configclass
+from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
+
+from . import mdp
+
+
+##
+# Scene definition
+##
+@configclass
+class ObjectTableSceneCfg(InteractiveSceneCfg):
+    """Configuration for the push scene with a robot and two objects."""
+
+    # robots: will be populated by agent env cfg
+    robot: ArticulationCfg = MISSING
+    # end-effector sensor: will be populated by agent env cfg
+    ee_frame: FrameTransformerCfg = MISSING
+    # Cameras: will be populated by agent env cfg
+    cam_wrist: CameraCfg = MISSING
+    cam_top: CameraCfg = MISSING
+
+    # Table
+    table = AssetBaseCfg(
+        prim_path="{ENV_REGEX_NS}/Table",
+        init_state=AssetBaseCfg.InitialStateCfg(pos=[0.5, 0, 0], rot=[0.707, 0, 0, 0.707]),
+        spawn=UsdFileCfg(usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Mounts/SeattleLabTable/table_instanceable.usd"),
+    )
+
+    # plane
+    plane = AssetBaseCfg(
+        prim_path="/World/GroundPlane",
+        init_state=AssetBaseCfg.InitialStateCfg(pos=[0, 0, -1.05]),
+        spawn=GroundPlaneCfg(),
+    )
+
+    # lights
+    light = AssetBaseCfg(
+        prim_path="/World/light",
+        spawn=sim_utils.DomeLightCfg(color=(0.75, 0.75, 0.75), intensity=3000.0),
+    )
+
+
+##
+# MDP settings
+##
+@configclass
+class ActionsCfg:
+    """Action specifications for the MDP."""
+
+    # will be set by agent env cfg
+    arm_action: Any = MISSING
+    gripper_action: Any = MISSING
+
+
+@configclass
+class ObservationsCfg:
+    """Observation specifications for the MDP."""
+
+    @configclass
+    class PolicyCfg(ObsGroup):
+        """Observations for policy group with state values."""
+
+        actions = ObsTerm(func=isaaclab_mdp.last_action)
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel_name,
+            params={
+                "joint_names": ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "rh_r1_joint"],
+                "asset_name": "robot",
+            },
+        )
+        joint_vel = ObsTerm(
+            func=mdp.joint_vel_rel_name,
+            params={
+                "joint_names": ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "rh_r1_joint"],
+                "asset_name": "robot",
+            },
+        )
+        pusher_object_position = ObsTerm(
+            func=mdp.pusher_object_position_in_robot_root_frame,
+            params={"asset_cfg": SceneEntityCfg("pusher_object")},
+        )
+        target_object_position = ObsTerm(
+            func=mdp.target_object_position_in_robot_root_frame,
+            params={"asset_cfg": SceneEntityCfg("target_object")},
+        )
+        eef_pos = ObsTerm(func=mdp.ee_frame_pos)
+        eef_quat = ObsTerm(func=mdp.ee_frame_quat)
+        gripper_pos = ObsTerm(func=mdp.gripper_pos)
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = False
+
+    @configclass
+    class RGBCameraPolicyCfg(ObsGroup):
+        """Observations for policy group with RGB images."""
+
+        cam_wrist = ObsTerm(
+            func=mdp.image,
+            params={"sensor_cfg": SceneEntityCfg("cam_wrist"), "data_type": "rgb", "normalize": False},
+        )
+        cam_top = ObsTerm(
+            func=mdp.image,
+            params={"sensor_cfg": SceneEntityCfg("cam_top"), "data_type": "rgb", "normalize": False},
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = False
+
+    @configclass
+    class SubtaskCfg(ObsGroup):
+        """Observations for subtask group."""
+
+        contact_pusher = ObsTerm(
+            func=mdp.contact_pusher,
+            params={
+                "robot_cfg": SceneEntityCfg("robot"),
+                "ee_frame_cfg": SceneEntityCfg("ee_frame"),
+                "object_cfg": SceneEntityCfg("pusher_object"),
+            },
+        )
+        objects_close = ObsTerm(
+            func=mdp.objects_close,
+            params={
+                "pusher_cfg": SceneEntityCfg("pusher_object"),
+                "target_cfg": SceneEntityCfg("target_object"),
+            },
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = False
+
+    # observation groups
+    policy: PolicyCfg = PolicyCfg()
+    rgb_camera: RGBCameraPolicyCfg = RGBCameraPolicyCfg()
+    subtask_terms: SubtaskCfg = SubtaskCfg()
+
+
+@configclass
+class TerminationsCfg:
+    """Termination terms for the MDP."""
+
+    time_out = DoneTerm(func=isaaclab_mdp.time_out, time_out=True)
+
+    pusher_object_dropping = DoneTerm(
+        func=isaaclab_mdp.root_height_below_minimum,
+        params={"minimum_height": -0.05, "asset_cfg": SceneEntityCfg("pusher_object")},
+    )
+
+    target_object_dropping = DoneTerm(
+        func=isaaclab_mdp.root_height_below_minimum,
+        params={"minimum_height": -0.05, "asset_cfg": SceneEntityCfg("target_object")},
+    )
+
+    success = DoneTerm(
+        func=mdp.objects_close_success,
+        params={
+            "pusher_cfg": SceneEntityCfg("pusher_object"),
+            "target_cfg": SceneEntityCfg("target_object"),
+            "threshold": 0.05,
+        },
+    )
+
+
+@configclass
+class PushEnvCfg(ManagerBasedRLEnvCfg):
+    """Configuration for the push environment."""
+
+    # Scene settings
+    scene: ObjectTableSceneCfg = ObjectTableSceneCfg(num_envs=4096, env_spacing=2.5, replicate_physics=False)
+    # Basic settings
+    observations: ObservationsCfg = ObservationsCfg()
+    actions: ActionsCfg = ActionsCfg()
+    # MDP settings
+    terminations: TerminationsCfg = TerminationsCfg()
+
+    # Unused managers
+    commands = None
+    rewards = None
+    events = None
+    curriculum = None
+
+    xr: XrCfg = XrCfg(
+        anchor_pos=(-0.1, -0.5, -1.05),
+        anchor_rot=(0.866, 0, 0, -0.5),
+    )
+
+    def __post_init__(self):
+        """Post initialization."""
+        # general settings
+        self.decimation = 5
+        self.episode_length_s = 30.0
+        # simulation settings
+        self.sim.dt = 0.01  # 100Hz
+        self.sim.render_interval = 2
+
+        self.sim.physx.bounce_threshold_velocity = 0.01
+        self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
+        self.sim.physx.gpu_total_aggregate_pairs_capacity = 16 * 1024
+        self.sim.physx.friction_correlation_distance = 0.00625
